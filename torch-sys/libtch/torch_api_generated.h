@@ -1853,7 +1853,7 @@ void atg_pdist(tensor *, tensor self, double p);
 void atg_permute(tensor *, tensor self, int64_t *dims_data, int dims_len);
 void atg_permute_copy(tensor *, tensor self, int64_t *dims_data, int dims_len);
 void atg_permute_copy_out(tensor *, tensor out, tensor self, int64_t *dims_data, int dims_len);
-void atg_pin_memory(tensor *, tensor self, int device);
+void atg_pin_memory(tensor *, tensor self, int device, uint8_t dim_null);
 void atg_pinverse(tensor *, tensor self, double rcond);
 void atg_pixel_shuffle(tensor *, tensor self, int64_t upscale_factor);
 void atg_pixel_shuffle_out(tensor *, tensor out, tensor self, int64_t upscale_factor);

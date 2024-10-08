@@ -642,7 +642,7 @@ impl TrainableCModule {
         let inner = CModule::load_on_device(module_path, path.device())?;
         for (name, tensor) in inner.named_parameters()? {
             let requires_grad = tensor.requires_grad();
-            let _t = path.add(&name.replace('.', "_"), tensor, requires_grad);
+            let _t = path.add(&name.replace('.', "_"), tensor, requires_grad, None);
         }
         Ok(TrainableCModule { inner })
     }
@@ -655,7 +655,7 @@ impl TrainableCModule {
         let inner = CModule::load_data_on_device(data, path.device())?;
         for (name, tensor) in inner.named_parameters()? {
             let requires_grad = tensor.requires_grad();
-            let _t = path.add(&name.replace('.', "_"), tensor, requires_grad);
+            let _t = path.add(&name.replace('.', "_"), tensor, requires_grad, None);
         }
         Ok(TrainableCModule { inner })
     }
@@ -790,6 +790,25 @@ pub fn f_set_graph_executor_optimize(b: bool) -> Result<(), TchError> {
 /// This panics if it is not possible to enable or disable the graph executor optimizer.
 pub fn set_graph_executor_optimize(b: bool) {
     f_set_graph_executor_optimize(b).unwrap();
+}
+
+/// This does two things:
+/// - Running the forward pass with detection enabled will allow the backward
+///   pass to print the traceback of the forward operation that created the failing
+///   backward function.
+/// - If ``check_nan`` is ``true``, any backward computation that generates "NaN"
+///   value will raise an error.
+/// # Warning
+/// This mode should be enabled only for debugging as the different tests
+/// will slow down your program execution.
+///
+/// # Arguments
+///
+/// * `enabled` - A boolean that if true enables anomaly detection mode.
+/// * `check_nan` - A boolean that if true enables checking for NaN values.
+///
+pub fn set_anomaly_mode_enabled(enabled: bool, check_nan: bool) {
+    unsafe_torch!(at_set_anomaly_mode_enabled(enabled, check_nan));
 }
 
 #[allow(clippy::derive_partial_eq_without_eq)]

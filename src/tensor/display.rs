@@ -9,6 +9,8 @@ enum BasicKind {
     Int,
     Bool,
     Complex,
+    Packed,
+    Bits,
 }
 
 impl BasicKind {
@@ -16,8 +18,26 @@ impl BasicKind {
         match t.f_kind() {
             Err(_) => BasicKind::Complex,
             Ok(kind) => match kind {
-                Kind::Int | Kind::Int8 | Kind::Uint8 | Kind::Int16 | Kind::Int64 => BasicKind::Int,
+                Kind::Int
+                | Kind::Int8
+                | Kind::Uint8
+                | Kind::Int16
+                | Kind::Int64
+                | Kind::UInt16
+                | Kind::UInt32
+                | Kind::UInt64
+                | Kind::UInt1
+                | Kind::UInt2
+                | Kind::UInt3
+                | Kind::UInt4
+                | Kind::UInt5
+                | Kind::UInt6
+                | Kind::UInt7 => BasicKind::Int,
                 Kind::BFloat16
+                | Kind::Float8e5m2
+                | Kind::Float8e4m3fn
+                | Kind::Float8e5m2fnuz
+                | Kind::Float8e4m3fnuz
                 | Kind::QInt8
                 | Kind::QUInt8
                 | Kind::QInt32
@@ -30,6 +50,10 @@ impl BasicKind {
                 | Kind::Float8e4m3fnuz => BasicKind::Float,
                 Kind::Bool => BasicKind::Bool,
                 Kind::ComplexHalf | Kind::ComplexFloat | Kind::ComplexDouble => BasicKind::Complex,
+                Kind::QUInt2x4 | Kind::QUInt4x2 | Kind::Bits1x8 | Kind::Bits2x4 | Kind::Bits4x2 => {
+                    BasicKind::Packed
+                }
+                Kind::Bits8 | Kind::Bits16 => BasicKind::Bits,
             },
         }
     }
@@ -37,7 +61,7 @@ impl BasicKind {
     fn _is_floating_point(&self) -> bool {
         match self {
             BasicKind::Float => true,
-            BasicKind::Bool | BasicKind::Int | BasicKind::Complex => false,
+            BasicKind::Bool | BasicKind::Int | BasicKind::Complex | BasicKind::Bits | BasicKind::Packed => false,
         }
     }
 }
@@ -49,10 +73,26 @@ impl std::fmt::Debug for Tensor {
                 Err(err) => write!(f, "Tensor[{:?}, {:?}]", self.size(), err),
                 Ok(kind) => {
                     let (is_int, is_float) = match kind {
-                        Kind::Int | Kind::Int8 | Kind::Uint8 | Kind::Int16 | Kind::Int64 => {
-                            (true, false)
-                        }
+                        Kind::Int
+                        | Kind::Int8
+                        | Kind::Uint8
+                        | Kind::Int16
+                        | Kind::Int64
+                        | Kind::UInt16
+                        | Kind::UInt32
+                        | Kind::UInt64
+                        | Kind::UInt1
+                        | Kind::UInt2
+                        | Kind::UInt3
+                        | Kind::UInt4
+                        | Kind::UInt5
+                        | Kind::UInt6
+                        | Kind::UInt7 => (true, false),
                         Kind::BFloat16
+                        | Kind::Float8e4m3fn
+                        | Kind::Float8e5m2
+                        | Kind::Float8e4m3fnuz
+                        | Kind::Float8e5m2fnuz
                         | Kind::QInt8
                         | Kind::QUInt8
                         | Kind::QInt32
@@ -66,7 +106,14 @@ impl std::fmt::Debug for Tensor {
                         Kind::Bool
                         | Kind::ComplexHalf
                         | Kind::ComplexFloat
-                        | Kind::ComplexDouble => (false, false),
+                        | Kind::ComplexDouble
+                        | Kind::QUInt2x4
+                        | Kind::QUInt4x2
+                        | Kind::Bits8
+                        | Kind::Bits16
+                        | Kind::Bits1x8
+                        | Kind::Bits2x4
+                        | Kind::Bits4x2 => (false, false),
                     };
                     match (self.size().as_slice(), is_int, is_float) {
                         ([], true, false) => write!(f, "[{}]", i64::try_from(self).unwrap()),
@@ -420,7 +467,9 @@ impl std::fmt::Display for Tensor {
                     tf.fmt_tensor(self, 1, max_w, summarize, &po, f)?;
                     writeln!(f)?;
                 }
-                BasicKind::Complex => {}
+                BasicKind::Complex => {},
+                BasicKind::Bits => {},
+                BasicKind::Packed => {},
             };
             let kind = match self.f_kind() {
                 Ok(kind) => format!("{kind:?}"),
