@@ -8,11 +8,12 @@ pub struct LinearConfig {
     pub ws_init: super::Init,
     pub bs_init: Option<super::Init>,
     pub bias: bool,
+    pub shard: Option<super::Shard>,
 }
 
 impl Default for LinearConfig {
     fn default() -> Self {
-        LinearConfig { ws_init: super::init::DEFAULT_KAIMING_UNIFORM, bs_init: None, bias: true }
+        LinearConfig { ws_init: super::init::DEFAULT_KAIMING_UNIFORM, bs_init: None, bias: true, shard: None }
     }
 }
 
@@ -41,7 +42,7 @@ pub fn linear<'a, T: Borrow<super::Path<'a>>>(
         None
     };
 
-    Linear { ws: vs.var("weight", &[out_dim, in_dim], c.ws_init), bs }
+    Linear { ws: vs.var_with_shard("weight", &[out_dim, in_dim], c.ws_init, c.shard), bs }
 }
 
 impl super::module::Module for Linear {

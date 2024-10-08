@@ -99,6 +99,10 @@ extern "C" {
     pub fn at_save_to_stream(arg: *mut C_tensor, stream_ptr: *mut c_void);
     pub fn at_load(filename: *const c_char) -> *mut C_tensor;
     pub fn at_load_from_stream(stream_ptr: *mut c_void) -> *mut C_tensor;
+    pub fn at_load_from_stream_with_device(
+        stream_ptr: *mut c_void,
+        device_id: c_int,
+    ) -> *mut C_tensor;
     pub fn at_save_multi(
         args: *const *mut C_tensor,
         names: *const *const c_char,
@@ -140,6 +144,8 @@ extern "C" {
         enable_device_id: bool,
         device_id: c_int,
     );
+
+    pub fn at_set_anomaly_mode_enabled(enabled: bool, check_nan: bool);
 
     pub fn at_manual_seed(seed: i64);
     pub fn at_set_graph_executor_optimize(b: bool);
@@ -211,6 +217,7 @@ extern "C" {
     pub fn ato_set_weight_decay(arg: *mut C_optimizer, weight_decay: f64);
     pub fn ato_set_weight_decay_group(arg: *mut C_optimizer, group: size_t, weight_decay: f64);
     pub fn ato_zero_grad(arg: *mut C_optimizer);
+    pub fn ato_zero_grad_with_set_to_none(arg: *mut C_optimizer, set_to_none: bool);
     pub fn ato_step(arg: *mut C_optimizer);
     pub fn ato_free(arg: *mut C_optimizer);
     pub fn at_save_image(arg: *mut C_tensor, filename: *const c_char) -> c_int;
@@ -333,4 +340,84 @@ extern "C" {
     );
     pub fn atm_set_tensor_expr_fuser_enabled(enabled: c_int);
     pub fn atm_get_tensor_expr_fuser_enabled() -> bool;
+}
+
+extern "C" {
+    pub fn dummy_cuda_dependency();
+}
+
+#[repr(C)]
+pub struct CNCCL_ {
+    _private: [u8; 0],
+}
+
+#[repr(C)]
+pub struct CStore_ {
+    _private: [u8; 0],
+}
+
+extern "C" {
+    pub fn atd_new_hash_store() -> *mut CStore_;
+    pub fn atd_free_hash_store(s: *mut CStore_);
+    pub fn atd_new_process_group_nccl(
+        store: *mut CStore_,
+        rank: c_int,
+        size: c_int,
+        device_id: c_int,
+    ) -> *mut CNCCL_;
+    pub fn atd_free_process_group_nccl(n: *mut CNCCL_);
+    pub fn atd_process_group_nccl_allreduce(
+        n: *mut CNCCL_,
+        args: *const *mut C_tensor,
+        ntensors: c_int,
+        redOpType: c_uchar,
+    );
+    pub fn atd_process_group_nccl_barrier(n: *mut CNCCL_, device_id: c_int);
+    pub fn atd_process_group_nccl_send(
+        n: *mut CNCCL_,
+        args: *const *mut C_tensor,
+        ntensors: c_int,
+        dst_rank: c_int,
+    );
+    pub fn atd_process_group_nccl_recv(
+        n: *mut CNCCL_,
+        args: *const *mut C_tensor,
+        ntensors: c_int,
+        src_rank: c_int,
+    );
+    pub fn atd_process_group_nccl_group_start(n: *mut CNCCL_);
+    pub fn atd_process_group_nccl_group_end(n: *mut CNCCL_);
+    pub fn atd_process_group_nccl_allgather(
+        n: *mut CNCCL_,
+        output_tensors: *const *mut C_tensor,
+        noutput_tensors: c_int,
+        input_tensor: *mut C_tensor,
+    );
+    pub fn atd_process_group_nccl_scatter(
+        n: *mut CNCCL_,
+        output_tensor: *mut C_tensor,
+        input_tensors: *const *mut C_tensor,
+        ninput_tensors: c_int,
+        root_rank: c_int,
+    );
+    pub fn atd_process_group_nccl_copy_to_model_parallel(
+        p: *mut CNCCL_,
+        t: *mut C_tensor,
+    ) -> *mut C_tensor;
+    pub fn atd_process_group_nccl_reduce_from_model_parallel(
+        p: *mut CNCCL_,
+        t: *mut C_tensor,
+    ) -> *mut C_tensor;
+    pub fn atd_process_group_nccl_scatter_to_model_parallel(
+        p: *mut CNCCL_,
+        t: *mut C_tensor,
+        world_size: i64,
+        rank: i64,
+    ) -> *mut C_tensor;
+    pub fn atd_process_group_nccl_gather_from_model_parallel(
+        p: *mut CNCCL_,
+        t: *mut C_tensor,
+        world_size: i64,
+        rank: i64,
+    ) -> *mut C_tensor;
 }

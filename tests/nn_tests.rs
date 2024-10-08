@@ -19,6 +19,7 @@ fn optimizer_test() {
         ws_init: nn::Init::Const(0.),
         bs_init: Some(nn::Init::Const(0.)),
         bias: true,
+        shard: None,
     };
     let mut linear = nn::linear(vs.root(), 1, 1, cfg);
 

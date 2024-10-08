@@ -116,6 +116,11 @@ impl COptimizer {
         Ok(())
     }
 
+    pub fn zero_grad_with_set_to_none(&self, set_to_none: bool) -> Result<(), TchError> {
+        unsafe_torch_err!(torch_sys::ato_zero_grad_with_set_to_none(self.c_optimizer, set_to_none));
+        Ok(())
+    }
+
     pub fn step(&self) -> Result<(), TchError> {
         unsafe_torch_err!(torch_sys::ato_step(self.c_optimizer));
         Ok(())

@@ -27,6 +27,7 @@ zip = "0.6"
 download-libtorch = ["ureq", "serde", "serde_json"]
 doc-only = []
 python-extension = []
+nccl = []
 
 [package.metadata.docs.rs]
 features = [ "doc-only" ]
