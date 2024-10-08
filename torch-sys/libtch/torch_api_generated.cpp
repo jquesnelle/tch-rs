@@ -13484,9 +13484,9 @@ void atg_permute_copy_out(tensor *out__, tensor out, tensor self, int64_t *dims_
   )
 }
 
-void atg_pin_memory(tensor *out__, tensor self, int device) {
+void atg_pin_memory(tensor *out__, tensor self, int device, uint8_t device_null) {
   PROTECT(
-    auto outputs__ = self->pin_memory(device_of_int(device));
+    auto outputs__ = self->pin_memory(device_null ? c10::nullopt : c10::optional(device_of_int(device)));
     out__[0] = new torch::Tensor(outputs__);
   )
 }

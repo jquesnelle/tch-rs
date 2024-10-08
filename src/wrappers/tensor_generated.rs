@@ -14609,7 +14609,7 @@ impl Tensor {
         self.f_permute_copy_out(out, dims).unwrap()
     }
 
-    pub fn pin_memory(&self, device: Device) -> Tensor {
+    pub fn pin_memory(&self, device: Option<Device>) -> Tensor {
         self.f_pin_memory(device).unwrap()
     }
 
