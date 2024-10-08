@@ -24,7 +24,8 @@ pub struct Var {
 #[derive(Debug)]
 pub struct Variables {
     pub named_variables: HashMap<String, Tensor>,
-    pub trainable_variables: Vec<Var>,
+    pub shards: HashMap<String, Shard>,
+    pub trainable_variables: Vec<(Var, Option<Shard>)>,
 }
 
 /// A VarStore is used to store variables used by one or multiple layers.
@@ -53,12 +54,37 @@ pub struct Entry<'a> {
     path: &'a Path<'a>,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct Shard {
+    pub dim: usize,
+    pub rank: usize,
+    pub world_size: usize,
+}
+
+impl Default for Shard {
+    fn default() -> Self {
+        Self { dim: 0, rank: 0, world_size: 1 }
+    }
+}
+
 impl VarStore {
     /// Creates a new var-store located on the specified device.
     pub fn new(device: Device) -> VarStore {
-        let variables =
-            Variables { named_variables: HashMap::new(), trainable_variables: Vec::new() };
+        let variables = Variables {
+            named_variables: HashMap::new(),
+            trainable_variables: Vec::new(),
+            shards: HashMap::new(),
+        };
         VarStore { variables_: Arc::new(Mutex::new(variables)), device, kind: Kind::Float }
+    }
+
+    pub fn new_with_kind(device: Device, kind: Kind) -> VarStore {
+        let variables = Variables {
+            named_variables: HashMap::new(),
+            trainable_variables: Vec::new(),
+            shards: HashMap::new(),
+        };
+        VarStore { variables_: Arc::new(Mutex::new(variables)), device, kind }
     }
 
     pub fn merge(var_stores: Vec<(VarStore, Option<&str>)>) -> Result<VarStore, TchError> {
@@ -67,8 +93,11 @@ impl VarStore {
         if var_stores.is_empty() {
             Ok(new_var_store)
         } else {
-            let mut new_variables =
-                Variables { named_variables: HashMap::new(), trainable_variables: Vec::new() };
+            let mut new_variables = Variables {
+                named_variables: HashMap::new(),
+                trainable_variables: Vec::new(),
+                shards: HashMap::new(),
+            };
             let device = var_stores[0].0.device();
 
             for (var_store, prefix) in var_stores {
@@ -131,7 +160,7 @@ impl VarStore {
     /// Returns all the trainable variables for this var-store.
     pub fn trainable_variables(&self) -> Vec<Tensor> {
         let variables = self.variables_.lock().unwrap();
-        variables.trainable_variables.iter().map(|v| v.tensor.shallow_clone()).collect()
+        variables.trainable_variables.iter().map(|v| v.0.tensor.shallow_clone()).collect()
     }
 
     /// Returns all variables along with their names.
@@ -142,6 +171,11 @@ impl VarStore {
             .iter()
             .map(|(name, v)| (name.clone(), v.shallow_clone()))
             .collect()
+    }
+
+    pub fn shards(&self) -> HashMap<String, Shard> {
+        let variables = self.variables_.lock().unwrap();
+        variables.shards.clone()
     }
 
     /// Gets the root path for this variable store.
@@ -166,7 +200,7 @@ impl VarStore {
         let variables = self.variables_.lock().unwrap();
         let named_tensors = variables.named_variables.iter().collect::<Vec<_>>();
         match path.as_ref().extension().and_then(|x| x.to_str()) {
-            Some("safetensors") => Tensor::write_safetensors(named_tensors.as_slice(), path),
+            Some("safetensors") => Tensor::write_safetensors(named_tensors.as_slice(), path, &None),
             Some(_) | None => Tensor::save_multi(named_tensors.as_slice(), path),
         }
     }
@@ -314,7 +348,7 @@ impl VarStore {
     pub fn freeze(&mut self) {
         let variables = self.variables_.lock().unwrap();
         for variable in variables.trainable_variables.iter() {
-            let _v = variable.tensor.set_requires_grad(false);
+            let _v = variable.0.tensor.set_requires_grad(false);
         }
     }
 
@@ -324,7 +358,7 @@ impl VarStore {
     pub fn unfreeze(&mut self) {
         let variables = self.variables_.lock().unwrap();
         for variable in variables.trainable_variables.iter() {
-            let _v = variable.tensor.set_requires_grad(true);
+            let _v = variable.0.tensor.set_requires_grad(true);
         }
     }
 
@@ -496,7 +530,13 @@ impl<'a> Path<'a> {
         self.set_float_kind(Kind::Double);
     }
 
-    pub(crate) fn add(&self, name: &str, tensor: Tensor, trainable: bool) -> Tensor {
+    pub(crate) fn add(
+        &self,
+        name: &str,
+        tensor: Tensor,
+        trainable: bool,
+        shard: Option<Shard>,
+    ) -> Tensor {
         let path = self.path(name);
         let mut variables = self.var_store.variables_.lock().unwrap();
         let path = if variables.named_variables.contains_key(&path) {
@@ -507,8 +547,11 @@ impl<'a> Path<'a> {
         let tensor = if trainable { tensor.set_requires_grad(true) } else { tensor };
         if trainable {
             let var = Var { tensor: tensor.shallow_clone(), group: self.group };
-            variables.trainable_variables.push(var);
+            variables.trainable_variables.push((var, shard));
         };
+        if let Some(shard) = shard {
+            variables.shards.insert(path.clone(), shard);
+        }
         variables.named_variables.insert(path, tensor.shallow_clone());
         tensor
     }
@@ -518,6 +561,7 @@ impl<'a> Path<'a> {
         name: &str,
         tensor: Tensor,
         trainable: bool,
+        shard: Option<Shard>,
         mut variables: MutexGuard<Variables>,
     ) -> Tensor {
         let path = self.path(name);
@@ -528,7 +572,7 @@ impl<'a> Path<'a> {
         let tensor = if trainable { tensor.set_requires_grad(true) } else { tensor };
         if trainable {
             let var = Var { tensor: tensor.shallow_clone(), group: self.group };
-            variables.trainable_variables.push(var);
+            variables.trainable_variables.push((var, shard));
         }
         variables.named_variables.insert(path, tensor.shallow_clone());
         tensor
@@ -542,7 +586,7 @@ impl<'a> Path<'a> {
     /// The variable uses a float tensor initialized with zeros.
     pub fn f_zeros_no_train(&self, name: &str, dims: &[i64]) -> Result<Tensor, TchError> {
         let z = Tensor::f_zeros(dims, (Kind::Float, self.device()))?;
-        Ok(self.add(name, z, false))
+        Ok(self.add(name, z, false, None))
     }
 
     /// Creates a new variable initialized with ones.
@@ -553,7 +597,7 @@ impl<'a> Path<'a> {
     /// The variable uses a float tensor initialized with ones.
     pub fn f_ones_no_train(&self, name: &str, dims: &[i64]) -> Result<Tensor, TchError> {
         let o = Tensor::f_ones(dims, (Kind::Float, self.device()))?;
-        Ok(self.add(name, o, false))
+        Ok(self.add(name, o, false, None))
     }
 
     /// Creates a new variable.
@@ -565,7 +609,31 @@ impl<'a> Path<'a> {
     /// related argument.
     pub fn f_var(&self, name: &str, dims: &[i64], init: Init) -> Result<Tensor, TchError> {
         let v = super::f_init(init, dims, self.device(), self.kind())?;
-        Ok(self.add(name, v, true))
+        Ok(self.add(name, v, true, None))
+    }
+
+    pub fn f_var_with_shard(
+        &self,
+        name: &str,
+        dims: &[i64],
+        init: Init,
+        shard: Option<Shard>,
+    ) -> Result<Tensor, TchError> {
+        let adjusted_dims = Self::adjust_dims_for_shard(dims, shard.as_ref());
+        let v = super::f_init(init, &adjusted_dims, self.device(), self.kind())?;
+        Ok(self.add(name, v, true, shard))
+    }
+
+    fn adjust_dims_for_shard(dims: &[i64], shard: Option<&Shard>) -> Vec<i64> {
+        if let Some(Shard { dim, rank: _, world_size }) = shard {
+            let mut adjusted_dims = dims.to_vec();
+            if *dim < adjusted_dims.len() {
+                adjusted_dims[*dim] = adjusted_dims[*dim] / *world_size as i64;
+            }
+            adjusted_dims
+        } else {
+            dims.to_vec()
+        }
     }
 
     /// Creates a new variable initialized with zeros.
@@ -714,6 +782,16 @@ impl<'a> Path<'a> {
         self.f_var(name, dims, init).unwrap()
     }
 
+    pub fn var_with_shard(
+        &self,
+        name: &str,
+        dims: &[i64],
+        init: Init,
+        shard: Option<Shard>,
+    ) -> Tensor {
+        self.f_var_with_shard(name, dims, init, shard).unwrap()
+    }
+
     /// Creates a new variable initialized with zeros.
     ///
     /// The new variable is named according to the name parameter and
@@ -837,7 +915,7 @@ impl<'a> Entry<'a> {
     /// initialized according to the init parameter.
     pub fn or_var(self, dims: &[i64], init: Init) -> Tensor {
         let v = super::init(init, dims, self.path.device());
-        self.path.get_or_add_with_lock(self.name, v, true, self.variables)
+        self.path.get_or_add_with_lock(self.name, v, true, None, self.variables)
     }
 
     /// Returns the existing entry if, otherwise create a new variable.
@@ -870,7 +948,7 @@ impl<'a> Entry<'a> {
     /// Returns the existing entry if, otherwise create a new variable.
     pub fn or_ones_no_train(self, dims: &[i64]) -> Tensor {
         let o = Tensor::ones(dims, (Kind::Float, self.path.device()));
-        self.path.get_or_add_with_lock(self.name, o, true, self.variables)
+        self.path.get_or_add_with_lock(self.name, o, true, None, self.variables)
     }
 
     /// Returns the existing entry if, otherwise create a new variable.
@@ -897,7 +975,7 @@ impl<'a> Entry<'a> {
     /// Returns the existing entry if, otherwise create a new variable.
     pub fn or_zeros_no_train(self, dims: &[i64]) -> Tensor {
         let z = Tensor::zeros(dims, (Kind::Float, self.path.device()));
-        self.path.get_or_add_with_lock(self.name, z, true, self.variables)
+        self.path.get_or_add_with_lock(self.name, z, true, None, self.variables)
     }
 }
 

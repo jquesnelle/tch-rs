@@ -14,6 +14,8 @@ typedef torch::Scalar *scalar;
 typedef torch::optim::Optimizer *optimizer;
 typedef torch::jit::script::Module *module;
 typedef torch::jit::IValue *ivalue;
+typedef void *nccl;
+typedef void *store;
 #define PROTECT(x) \
   try { \
     x \
@@ -26,6 +28,8 @@ typedef void *optimizer;
 typedef void *scalar;
 typedef void *module;
 typedef void *ivalue;
+typedef void *nccl;
+typedef void *store;
 #endif
 
 char *get_and_reset_last_err(); // thread-local
@@ -76,6 +80,7 @@ void at_save(tensor, char *filename);
 void at_save_to_stream(tensor t, void *stream_ptr);
 tensor at_load(char *filename);
 tensor at_load_from_stream(void *stream_ptr);
+tensor at_load_from_stream_with_device(void *stream_ptr, int device_id);
 tensor at_load_image(char *filename);
 tensor at_load_image_from_memory(unsigned char *img_data, size_t img_size);
 int at_save_image(tensor, char *filename);
@@ -145,6 +150,7 @@ void ato_set_momentum_group(optimizer, size_t group, double momentum);
 void ato_set_weight_decay(optimizer t, double weight_decay);
 void ato_set_weight_decay_group(optimizer t, size_t group, double weight_decay);
 void ato_zero_grad(optimizer);
+void ato_zero_grad_with_set_to_none(optimizer, bool set_to_none);
 void ato_step(optimizer);
 void ato_free(optimizer);
 
@@ -275,6 +281,9 @@ void ati_free(ivalue);
 /// Enables or disables the graph executor optimizer for the current thread.
 void at_set_graph_executor_optimize(bool);
 
+/// Enables or disables anomaly detection mode. This slows down autograd significantly. 
+void at_set_anomaly_mode_enabled(bool, bool);
+
 // for internal use
 bool tch_write_stream_destructor(void *stream_ptr);
 bool tch_write_stream_write(void *stream_ptr, const uint8_t *buf, size_t size, size_t *out_size);
@@ -283,6 +292,26 @@ bool tch_read_stream_stream_position(void *stream_ptr, uint64_t *pos);
 bool tch_read_stream_seek_start(void *stream_ptr, uint64_t pos, uint64_t *new_pos);
 bool tch_read_stream_seek_end(void *stream_ptr, int64_t pos, uint64_t *new_pos);
 bool tch_read_stream_read(void *stream_ptr, uint8_t *buf, size_t size, size_t *new_pos);
+
+#ifdef USE_C10D_NCCL
+// distributed
+store atd_new_hash_store();
+void atd_free_hash_store(store p);
+nccl atd_new_process_group_nccl(store s, int rank, int size, int device_id);
+void atd_free_process_group_nccl(nccl process);
+void atd_process_group_nccl_allreduce(nccl p, tensor *tensors, int ntensors, uint8_t redOpType);
+void atd_process_group_nccl_barrier(nccl p, int device_id);
+void atd_process_group_nccl_send(nccl p,  tensor *tensors, int ntensors, int dstRank);
+void atd_process_group_nccl_recv(nccl p, tensor *tensors, int ntensors, int srcRank);
+void atd_process_group_nccl_group_start(nccl p);
+void atd_process_group_nccl_group_end(nccl p);
+void atd_process_group_nccl_allgather(nccl p, tensor *output_tensors, int noutput_tensors, tensor input_tensor);
+void atd_process_group_nccl_scatter(nccl p, tensor output_tensor, tensor *input_tensors, int ninput_tensors, int root_rank);
+tensor atd_process_group_nccl_copy_to_model_parallel(nccl p, tensor t);
+tensor atd_process_group_nccl_reduce_from_model_parallel(nccl p, tensor t);
+tensor atd_process_group_nccl_scatter_to_model_parallel(nccl p, tensor t, int64_t world_size, int64_t rank);
+tensor atd_process_group_nccl_gather_from_model_parallel(nccl p, tensor t, int64_t world_size, int64_t rank);
+#endif
 
 #ifdef __cplusplus
 };

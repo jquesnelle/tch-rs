@@ -250,6 +250,9 @@ impl SystemInfo {
             libtorch_lib_dir = Some(lib.join("lib"));
             env_var_rerun("LIBTORCH_CXX11_ABI").unwrap_or_else(|_| "1".to_owned())
         };
+        if let Ok(cuda_root) = env_var_rerun("CUDA_ROOT") {
+            libtorch_include_dirs.push(PathBuf::from(cuda_root).join("include"))
+        }
         let libtorch_lib_dir = libtorch_lib_dir.expect("no libtorch lib dir found");
         let link_type = match env_var_rerun("LIBTORCH_STATIC").as_deref() {
             Err(_) | Ok("0") | Ok("false") | Ok("FALSE") => LinkType::Dynamic,
@@ -372,30 +375,36 @@ impl SystemInfo {
                 // as DEP_TORCH_SYS_LIBTORCH_LIB, see:
                 // https://doc.rust-lang.org/cargo/reference/build-scripts.html#the-links-manifest-key
                 println!("cargo:libtorch_lib={}", self.libtorch_lib_dir.display());
-                cc::Build::new()
-                    .cpp(true)
+                let mut builder = cc::Build::new();
+                builder.cpp(true)
                     .pic(true)
                     .warnings(false)
                     .includes(&self.libtorch_include_dirs)
                     .flag(format!("-Wl,-rpath={}", self.libtorch_lib_dir.display()))
                     .flag("-std=c++17")
                     .flag(format!("-D_GLIBCXX_USE_CXX11_ABI={}", self.cxx11_abi))
-                    .flag("-DGLOG_USE_GLOG_EXPORT")
-                    .files(&c_files)
+                    .flag("-DGLOG_USE_GLOG_EXPORT");
+                if cfg!(feature = "nccl") {
+                    builder.flag("-DUSE_C10D_NCCL");
+                }
+                builder.files(&c_files)
                     .compile("tch");
             }
             Os::Windows => {
                 // TODO: Pass "/link" "LIBPATH:{}" to cl.exe in order to emulate rpath.
                 //       Not yet supported by cc=rs.
                 //       https://github.com/alexcrichton/cc-rs/issues/323
-                cc::Build::new()
-                    .cpp(true)
+                let mut builder = cc::Build::new();
+                builder.cpp(true)
                     .pic(true)
                     .warnings(false)
                     .includes(&self.libtorch_include_dirs)
                     .flag("/std:c++17")
-                    .flag("/p:DefineConstants=GLOG_USE_GLOG_EXPORT")
-                    .files(&c_files)
+                    .flag("/p:DefineConstants=GLOG_USE_GLOG_EXPORT");
+                if cfg!(feature = "nccl") {
+                    builder.flag("/p:DefineConstants=USE_C10D_NCCL");
+                }
+                builder.files(&c_files)
                     .compile("tch");
             }
         };
@@ -494,6 +503,9 @@ fn main() -> anyhow::Result<()> {
         system_info.link("c10");
         if use_hip {
             system_info.link("c10_hip");
+        }
+        if use_cuda {
+            system_info.link("c10_cuda");
         }
 
         let target = env::var("TARGET").context("TARGET variable not set")?;
