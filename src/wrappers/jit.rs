@@ -642,7 +642,7 @@ impl TrainableCModule {
         let inner = CModule::load_on_device(module_path, path.device())?;
         for (name, tensor) in inner.named_parameters()? {
             let requires_grad = tensor.requires_grad();
-            let _t = path.add(&name.replace('.', "_"), tensor, requires_grad);
+            let _t = path.add(&name.replace('.', "_"), tensor, requires_grad, None);
         }
         Ok(TrainableCModule { inner })
     }
@@ -655,7 +655,7 @@ impl TrainableCModule {
         let inner = CModule::load_data_on_device(data, path.device())?;
         for (name, tensor) in inner.named_parameters()? {
             let requires_grad = tensor.requires_grad();
-            let _t = path.add(&name.replace('.', "_"), tensor, requires_grad);
+            let _t = path.add(&name.replace('.', "_"), tensor, requires_grad, None);
         }
         Ok(TrainableCModule { inner })
     }
