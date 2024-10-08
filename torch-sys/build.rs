@@ -179,13 +179,16 @@ impl SystemInfo {
         };
         // Locate the currently active Python binary, similar to:
         // https://github.com/PyO3/maturin/blob/243b8ec91d07113f97a6fe74d9b2dcb88086e0eb/src/target.rs#L547
-        let python_interpreter = match os {
-            Os::Windows => PathBuf::from("python.exe"),
-            Os::Linux | Os::Macos => {
-                if env::var_os("VIRTUAL_ENV").is_some() {
-                    PathBuf::from("python")
-                } else {
-                    PathBuf::from("python3")
+        let python_interpreter = match env::var_os("PYO3_PYTHON") {
+            Some(python) => PathBuf::from(python),
+            None => match os {
+                Os::Windows => PathBuf::from("python.exe"),
+                Os::Linux | Os::Macos => {
+                    if env::var_os("VIRTUAL_ENV").is_some() {
+                        PathBuf::from("python")
+                    } else {
+                        PathBuf::from("python3")
+                    }
                 }
             }
         };
@@ -250,6 +253,9 @@ impl SystemInfo {
             libtorch_lib_dir = Some(lib.join("lib"));
             env_var_rerun("LIBTORCH_CXX11_ABI").unwrap_or_else(|_| "1".to_owned())
         };
+        if let Ok(cuda_root) = env_var_rerun("CUDA_ROOT") {
+            libtorch_include_dirs.push(PathBuf::from(cuda_root).join("include"))
+        }
         let libtorch_lib_dir = libtorch_lib_dir.expect("no libtorch lib dir found");
         let link_type = match env_var_rerun("LIBTORCH_STATIC").as_deref() {
             Err(_) | Ok("0") | Ok("false") | Ok("FALSE") => LinkType::Dynamic,
@@ -351,7 +357,13 @@ impl SystemInfo {
         }
     }
 
-    fn make(&self) {
+    fn make(&self, use_cuda: bool, use_hip: bool) {
+        let cuda_dependency = if use_cuda || use_hip {
+            "libtch/dummy_cuda_dependency.cpp"
+        } else {
+            "libtch/fake_cuda_dependency.cpp"
+        };
+        println!("cargo:rerun-if-changed={}", cuda_dependency);
         println!("cargo:rerun-if-changed=libtch/torch_python.cpp");
         println!("cargo:rerun-if-changed=libtch/torch_python.h");
         println!("cargo:rerun-if-changed=libtch/torch_api_generated.cpp");
@@ -361,7 +373,8 @@ impl SystemInfo {
         println!("cargo:rerun-if-changed=libtch/stb_image_write.h");
         println!("cargo:rerun-if-changed=libtch/stb_image_resize.h");
         println!("cargo:rerun-if-changed=libtch/stb_image.h");
-        let mut c_files = vec!["libtch/torch_api.cpp", "libtch/torch_api_generated.cpp"];
+        let mut c_files =
+            vec!["libtch/torch_api.cpp", "libtch/torch_api_generated.cpp", cuda_dependency];
         if cfg!(feature = "python-extension") {
             c_files.push("libtch/torch_python.cpp")
         }
@@ -372,30 +385,36 @@ impl SystemInfo {
                 // as DEP_TORCH_SYS_LIBTORCH_LIB, see:
                 // https://doc.rust-lang.org/cargo/reference/build-scripts.html#the-links-manifest-key
                 println!("cargo:libtorch_lib={}", self.libtorch_lib_dir.display());
-                cc::Build::new()
-                    .cpp(true)
+                let mut builder = cc::Build::new();
+                builder.cpp(true)
                     .pic(true)
                     .warnings(false)
                     .includes(&self.libtorch_include_dirs)
                     .flag(format!("-Wl,-rpath={}", self.libtorch_lib_dir.display()))
                     .flag("-std=c++17")
                     .flag(format!("-D_GLIBCXX_USE_CXX11_ABI={}", self.cxx11_abi))
-                    .flag("-DGLOG_USE_GLOG_EXPORT")
-                    .files(&c_files)
+                    .flag("-DGLOG_USE_GLOG_EXPORT");
+                if cfg!(feature = "nccl") {
+                    builder.flag("-DUSE_C10D_NCCL");
+                }
+                builder.files(&c_files)
                     .compile("tch");
             }
             Os::Windows => {
                 // TODO: Pass "/link" "LIBPATH:{}" to cl.exe in order to emulate rpath.
                 //       Not yet supported by cc=rs.
                 //       https://github.com/alexcrichton/cc-rs/issues/323
-                cc::Build::new()
-                    .cpp(true)
+                let mut builder = cc::Build::new();
+                builder.cpp(true)
                     .pic(true)
                     .warnings(false)
                     .includes(&self.libtorch_include_dirs)
                     .flag("/std:c++17")
-                    .flag("/p:DefineConstants=GLOG_USE_GLOG_EXPORT")
-                    .files(&c_files)
+                    .flag("/p:DefineConstants=GLOG_USE_GLOG_EXPORT");
+                if cfg!(feature = "nccl") {
+                    builder.flag("/p:DefineConstants=USE_C10D_NCCL");
+                }
+                builder.files(&c_files)
                     .compile("tch");
             }
         };
@@ -435,9 +454,6 @@ fn main() -> anyhow::Result<()> {
         // if this issue.
         // TODO: Try out the as-needed native link modifier when it lands.
         // https://github.com/rust-lang/rust/issues/99424
-        //
-        // Update: it seems that the dummy dependency is not necessary anymore, so just
-        // removing it and keeping this comment around for legacy.
         let si_lib = &system_info.libtorch_lib_dir;
         let use_cuda =
             si_lib.join("libtorch_cuda.so").exists() || si_lib.join("torch_cuda.dll").exists();
@@ -449,7 +465,7 @@ fn main() -> anyhow::Result<()> {
             si_lib.join("libtorch_hip.so").exists() || si_lib.join("torch_hip.dll").exists();
         println!("cargo:rustc-link-search=native={}", si_lib.display());
 
-        system_info.make();
+        system_info.make(use_cuda, use_hip);
 
         println!("cargo:rustc-link-lib=static=tch");
         if use_cuda {
@@ -494,6 +510,9 @@ fn main() -> anyhow::Result<()> {
         system_info.link("c10");
         if use_hip {
             system_info.link("c10_hip");
+        }
+        if use_cuda {
+            system_info.link("c10_cuda");
         }
 
         let target = env::var("TARGET").context("TARGET variable not set")?;
