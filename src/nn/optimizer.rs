@@ -1,5 +1,6 @@
 //! Optimizers to be used for gradient-descent based training.
 use super::var_store::{VarStore, Variables};
+use super::Shard;
 use crate::wrappers::optimizer::COptimizer;
 use crate::{TchError, Tensor};
 use std::sync::{Arc, Mutex};
@@ -24,7 +25,7 @@ where
         let mut opt = self.build_copt(lr)?;
         let v = vs.variables_.lock().unwrap();
         for var in &v.trainable_variables {
-            opt.add_parameters(&var.tensor, var.group)?;
+            opt.add_parameters(&var.0.tensor, var.0.group)?;
         }
         Ok(Optimizer {
             opt,
@@ -200,7 +201,7 @@ impl Optimizer {
         let v = self.variables.lock().unwrap();
         if v.trainable_variables.len() > self.variables_in_optimizer {
             for var in &v.trainable_variables[self.variables_in_optimizer..] {
-                self.opt.add_parameters(&var.tensor, var.group).unwrap();
+                self.opt.add_parameters(&var.0.tensor, var.0.group).unwrap();
             }
             self.variables_in_optimizer = v.trainable_variables.len();
         }
@@ -212,11 +213,17 @@ impl Optimizer {
         self.opt.zero_grad().unwrap()
     }
 
+    /// Zeroes the gradient for the tensors tracked by this optimizer.
+    pub fn zero_grad_with_set_to_none(&mut self, set_to_none: bool) {
+        self.add_missing_variables();
+        self.opt.zero_grad_with_set_to_none(set_to_none).unwrap()
+    }
+
     /// Clips gradient value at some specified maximum value.
     pub fn clip_grad_value(&self, max: f64) {
         let v = self.variables.lock().unwrap();
         for var in v.trainable_variables.iter() {
-            let mut grad = var.tensor.grad();
+            let mut grad = var.0.tensor.grad();
             if grad.defined() {
                 let _t = grad.clamp_(-max, max);
             }
@@ -232,7 +239,7 @@ impl Optimizer {
             let v = self.variables.lock().unwrap();
             let mut norms = vec![];
             for var in v.trainable_variables.iter() {
-                let grad = var.tensor.grad();
+                let grad = var.0.tensor.grad();
                 if grad.defined() {
                     norms.push(grad.norm());
                 }
@@ -241,7 +248,7 @@ impl Optimizer {
             let clip_coef = max / (total_norm + 1e-6);
             if clip_coef < 1.0 {
                 for var in v.trainable_variables.iter() {
-                    let mut grad = var.tensor.grad();
+                    let mut grad = var.0.tensor.grad();
                     if grad.defined() {
                         let _t = grad.g_mul_scalar_(clip_coef);
                     }
@@ -309,7 +316,13 @@ impl Optimizer {
     /// Returns all the trainable variables for this optimizer.
     pub fn trainable_variables(&self) -> Vec<Tensor> {
         let variables = self.variables.lock().unwrap();
-        variables.trainable_variables.iter().map(|v| v.tensor.shallow_clone()).collect()
+        variables.trainable_variables.iter().map(|v| v.0.tensor.shallow_clone()).collect()
+    }
+
+    /// Returns all the trainable variables and their sharding for this optimizer.
+    pub fn trainable_variables_with_sharding(&self) -> Vec<(Tensor, Option<Shard>)> {
+        let variables = self.variables.lock().unwrap();
+        variables.trainable_variables.iter().map(|v| (v.0.tensor.shallow_clone(), v.1.clone())).collect()
     }
 
     /// Sets the optimizer weight decay.

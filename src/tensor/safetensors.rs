@@ -5,6 +5,7 @@
 use crate::nn::VarStore;
 use crate::{Kind, TchError, Tensor};
 
+use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::path::Path;
 
@@ -119,6 +120,7 @@ impl crate::Tensor {
     pub fn write_safetensors<S: AsRef<str>, T: AsRef<Tensor>, P: AsRef<Path>>(
         tensors: &[(S, T)],
         path: P,
+        data_info: &Option<HashMap<String, String>>,
     ) -> Result<(), TchError> {
         let views = tensors
             .iter()
@@ -126,7 +128,7 @@ impl crate::Tensor {
                 Ok::<(&str, SafeView), TchError>((name.as_ref(), tensor.as_ref().try_into()?))
             })
             .collect::<Result<Vec<_>, _>>()?;
-        safetensors::tensor::serialize_to_file(views, &None, path.as_ref())
+        safetensors::tensor::serialize_to_file(views, data_info, path.as_ref())
             .map_err(|e| wrap_err(path, e))?;
         Ok(())
     }

@@ -10,6 +10,11 @@
 #include<torch/script.h>
 #include<torch/csrc/jit/passes/tensorexpr_fuser.h>
 #include<torch/csrc/jit/codegen/cuda/interface.h>
+#ifdef USE_C10D_NCCL
+#include<torch/csrc/distributed/c10d/ProcessGroupNCCL.hpp>
+#include<torch/csrc/distributed/c10d/HashStore.hpp>
+#include<c10/util/intrusive_ptr.h>
+#endif
 #include<stdexcept>
 #include<vector>
 #include "torch_api.h"
@@ -511,6 +516,22 @@ tensor at_load_from_stream(void *stream_ptr) {
   return nullptr;
 }
 
+tensor at_load_from_stream_with_device(void *stream_ptr, int device_id) {
+  PROTECT(
+    torch::NoGradGuard no_grad;
+    torch::Tensor tensor;
+    auto adapter = std::shared_ptr<caffe2::serialize::ReadAdapterInterface>(new ReadStreamAdapter(stream_ptr));
+    torch::load(
+      tensor,
+      [adapter](uint64_t pos, void *buf, size_t nbytes){ return adapter->read(pos, buf, nbytes, "tensor" ); },
+      [adapter]() { return adapter->size(); },
+      device_of_int(device_id)
+    );
+    return new torch::Tensor(tensor);
+  )
+  return nullptr;
+}
+
 tensor at_load_image(char *filename) {
   PROTECT(
     int w = -1;
@@ -909,6 +930,10 @@ void ato_set_weight_decay_group(optimizer t, size_t group, double weight_decay) 
 
 void ato_zero_grad(optimizer t) {
   PROTECT(t->zero_grad();)
+}
+
+void ato_zero_grad_with_set_to_none(optimizer t, bool set_to_none) {
+  PROTECT(t->zero_grad(set_to_none);)
 }
 
 void ato_step(optimizer t) {
@@ -1669,3 +1694,293 @@ void ati_free(ivalue i) {
 void at_set_graph_executor_optimize(bool o) {
   torch::jit::setGraphExecutorOptimize(o);
 }
+
+void at_set_anomaly_mode_enabled(bool enabled, bool check_nan) {
+  torch::autograd::AnomalyMode::set_enabled(enabled, check_nan);
+}
+
+#ifdef USE_C10D_NCCL
+
+store atd_new_hash_store() {
+  PROTECT(
+    auto hash_store = new c10::intrusive_ptr(std::make_unique<c10d::HashStore>());
+    return hash_store;
+  )
+  return nullptr;
+}
+
+void atd_free_hash_store(store p) {
+  delete reinterpret_cast<c10::intrusive_ptr<c10d::HashStore>*>(p);
+}
+
+nccl atd_new_process_group_nccl(store s, int rank, int size, int device_id) {
+  PROTECT(
+    auto process_group = new c10d::ProcessGroupNCCL(
+      *reinterpret_cast<c10::intrusive_ptr<c10d::HashStore>*>(s),
+      rank,
+      size
+    );
+    process_group->setSequenceNumberForGroup();
+    process_group->eagerConnectSingleDevice(device_of_int(device_id));
+    return process_group;
+  )
+  return nullptr;
+}
+
+void atd_free_process_group_nccl(nccl p) {
+  delete reinterpret_cast<c10d::ProcessGroupNCCL*>(p);
+}
+
+#define NCCL(X) (reinterpret_cast<c10d::ProcessGroupNCCL*>(X))
+
+void atd_process_group_nccl_group_start(nccl p) {
+  PROTECT(NCCL(p)->groupStart();)
+}
+
+void atd_process_group_nccl_group_end(nccl p) {
+  PROTECT(NCCL(p)->groupEnd();)
+}
+
+void atd_process_group_nccl_allreduce(nccl p, tensor *tensors, int ntensors, uint8_t redOpType) {
+  PROTECT(
+    std::vector<at::Tensor> inputs;
+    for (int i = 0; i < ntensors; ++i)
+      inputs.push_back(*(tensors[i]));
+    c10d::AllreduceOptions opts;
+    opts.reduceOp = c10d::ReduceOp(c10d::ReduceOp::RedOpType(redOpType));
+    NCCL(p)->allreduce(inputs, opts)->wait();
+  )
+}
+
+void atd_process_group_nccl_barrier(nccl p, int device_id) {
+  PROTECT(
+    auto options = c10d::BarrierOptions();
+    options.device = device_of_int(device_id);
+    options.device_ids.push_back(device_id);
+    NCCL(p)->barrier(options)->wait();
+  )
+}
+
+class DifferentiableCopyToModelParallel : public torch::autograd::Function<DifferentiableCopyToModelParallel> {
+public:
+    static torch::autograd::Variable forward(
+        torch::autograd::AutogradContext *ctx,
+        torch::autograd::Variable tensor,
+        c10d::ProcessGroupNCCL* process_group) {
+        ctx->saved_data["process_group"] = reinterpret_cast<int64_t>(process_group);
+        return tensor.clone();
+    }
+
+    static torch::autograd::variable_list backward(
+        torch::autograd::AutogradContext *ctx,
+        torch::autograd::variable_list grad_output) {
+        auto process_group = reinterpret_cast<c10d::ProcessGroupNCCL*>(
+            ctx->saved_data["process_group"].toInt());
+
+        auto grad = grad_output[0].contiguous();
+        std::vector<at::Tensor> inputs = {grad};
+        c10d::AllreduceOptions opts;
+        opts.reduceOp = c10d::ReduceOp::SUM;
+        process_group->allreduce(inputs, opts)->wait();
+        return {grad, torch::Tensor()};
+    }
+};
+
+class DifferentiableReduceFromModelParallel : public torch::autograd::Function<DifferentiableReduceFromModelParallel> {
+public:
+    static torch::autograd::Variable forward(
+        torch::autograd::AutogradContext *ctx,
+        torch::autograd::Variable tensor,
+        c10d::ProcessGroupNCCL* process_group) {
+        ctx->saved_data["process_group"] = reinterpret_cast<int64_t>(process_group);
+        auto world_size = process_group->getSize();
+        ctx->saved_data["world_size"] = world_size;
+
+        auto t = tensor.contiguous();
+        std::vector<at::Tensor> inputs = {t};
+        c10d::AllreduceOptions opts;
+        opts.reduceOp = c10d::ReduceOp::SUM;
+        process_group->allreduce(inputs, opts)->wait();
+        return t;
+    }
+
+    static torch::autograd::variable_list backward(
+        torch::autograd::AutogradContext *ctx,
+        torch::autograd::variable_list grad_output) {
+        auto world_size = ctx->saved_data["world_size"].toInt();
+        return {grad_output[0], torch::Tensor()};
+    }
+};
+
+class DifferentiableScatterToModelParallel : public torch::autograd::Function<DifferentiableScatterToModelParallel> {
+public:
+    static torch::autograd::Variable forward(
+        torch::autograd::AutogradContext *ctx,
+        torch::autograd::Variable tensor,
+        c10d::ProcessGroupNCCL* process_group,
+        int64_t world_size,
+        int64_t rank) {
+
+        ctx->saved_data["process_group"] = reinterpret_cast<int64_t>(process_group);
+        ctx->saved_data["world_size"] = world_size;
+        ctx->saved_data["rank"] = rank;
+        ctx->save_for_backward({tensor});
+
+        tensor = tensor.contiguous();
+        int64_t split_dim = tensor.dim() - 1;
+        int64_t chunk_size = tensor.size(split_dim) / world_size;
+        TORCH_CHECK(tensor.size(split_dim) % world_size == 0,
+                   "Tensor size must be divisible by world_size");
+        auto chunks = tensor.chunk(world_size, split_dim);
+        return chunks[rank].contiguous();
+    }
+
+    static torch::autograd::variable_list backward(
+        torch::autograd::AutogradContext *ctx,
+        torch::autograd::variable_list grad_output) {
+        auto saved = ctx->get_saved_variables();
+        auto input_size = saved[0].sizes();
+
+        auto process_group = reinterpret_cast<c10d::ProcessGroupNCCL*>(
+            ctx->saved_data["process_group"].toInt());
+        auto world_size = ctx->saved_data["world_size"].toInt();
+        auto rank = ctx->saved_data["rank"].toInt();
+
+        auto grad = grad_output[0].contiguous();
+        std::vector<std::vector<at::Tensor>> tensor_list(1);
+        std::vector<at::Tensor> input_tensors = {grad};
+
+        for (int i = 0; i < world_size; i++) {
+            tensor_list[0].push_back(torch::empty_like(grad));
+        }
+        tensor_list[0][rank] = grad;
+
+        c10d::AllgatherOptions opts;
+        process_group->allgather(tensor_list, input_tensors, opts)->wait();
+
+        return {torch::cat(tensor_list[0], -1), torch::Tensor(), torch::Tensor(), torch::Tensor()};
+    }
+};
+
+class DifferentiableGatherFromModelParallel : public torch::autograd::Function<DifferentiableGatherFromModelParallel> {
+public:
+    static torch::autograd::Variable forward(
+        torch::autograd::AutogradContext *ctx,
+        torch::autograd::Variable tensor,
+        c10d::ProcessGroupNCCL* process_group,
+        int64_t world_size,
+        int64_t rank) {
+
+        ctx->saved_data["process_group"] = reinterpret_cast<int64_t>(process_group);
+        ctx->saved_data["world_size"] = world_size;
+        ctx->saved_data["rank"] = rank;
+        ctx->save_for_backward({tensor});
+
+        auto t = tensor.contiguous();
+        std::vector<std::vector<at::Tensor>> tensor_list(1);
+        std::vector<at::Tensor> input_tensors = {t};
+
+        for (int i = 0; i < world_size; i++) {
+            tensor_list[0].push_back(torch::empty_like(t));
+        }
+        tensor_list[0][rank] = t;
+
+        c10d::AllgatherOptions opts;
+        process_group->allgather(tensor_list, input_tensors, opts)->wait();
+
+        return torch::cat(tensor_list[0], -1);
+    }
+
+    static torch::autograd::variable_list backward(
+        torch::autograd::AutogradContext *ctx,
+        torch::autograd::variable_list grad_output) {
+        auto saved = ctx->get_saved_variables();
+        auto input_size = saved[0].sizes();
+
+        auto world_size = ctx->saved_data["world_size"].toInt();
+        auto rank = ctx->saved_data["rank"].toInt();
+
+        auto grad = grad_output[0].contiguous();
+        auto chunks = grad.chunk(world_size, -1);
+
+        return {chunks[rank].contiguous(), torch::Tensor(), torch::Tensor(), torch::Tensor()};
+    }
+};
+
+// Expose to Rust
+tensor atd_process_group_nccl_copy_to_model_parallel(nccl p, tensor t) {
+    PROTECT(
+        c10d::ProcessGroupNCCL* pg = NCCL(p);
+        return new torch::Tensor(DifferentiableCopyToModelParallel::apply(*t, pg));
+    )
+    return nullptr;
+}
+
+tensor atd_process_group_nccl_reduce_from_model_parallel(nccl p, tensor t) {
+    PROTECT(
+        c10d::ProcessGroupNCCL* pg = NCCL(p);
+        return new torch::Tensor(DifferentiableReduceFromModelParallel::apply(*t, pg));
+    )
+    return nullptr;
+}
+
+tensor atd_process_group_nccl_scatter_to_model_parallel(nccl p, tensor t, int64_t world_size, int64_t rank) {
+    PROTECT(
+        c10d::ProcessGroupNCCL* pg = NCCL(p);
+        return new torch::Tensor(DifferentiableScatterToModelParallel::apply(*t, pg, world_size, rank));
+    )
+    return nullptr;
+}
+
+tensor atd_process_group_nccl_gather_from_model_parallel(nccl p, tensor t, int64_t world_size, int64_t rank) {
+    PROTECT(
+        c10d::ProcessGroupNCCL* pg = NCCL(p);
+        return new torch::Tensor(DifferentiableGatherFromModelParallel::apply(*t, pg, world_size, rank));
+    )
+    return nullptr;
+}
+
+// Keep existing NCCL utility functions
+void atd_process_group_nccl_send(nccl p, tensor *tensors, int ntensors, int dstRank) {
+    PROTECT(
+        std::vector<at::Tensor> inputs;
+        for (int i = 0; i < ntensors; ++i)
+            inputs.push_back(*(tensors[i]));
+        NCCL(p)->send(inputs, dstRank, 0)->wait();
+    )
+}
+
+void atd_process_group_nccl_recv(nccl p, tensor *tensors, int ntensors, int srcRank) {
+    PROTECT(
+        std::vector<at::Tensor> inputs;
+        for (int i = 0; i < ntensors; ++i)
+            inputs.push_back(*(tensors[i]));
+        NCCL(p)->recv(inputs, srcRank, 0)->wait();
+    )
+}
+
+void atd_process_group_nccl_allgather(nccl p, tensor *output_tensors, int noutput_tensors, tensor input_tensor) {
+    PROTECT(
+        std::vector<std::vector<at::Tensor>> outputs(1);
+        for (int i = 0; i < noutput_tensors; ++i)
+            outputs[0].push_back(*(output_tensors[i]));
+        std::vector<at::Tensor> inputs = {*input_tensor};
+        c10d::AllgatherOptions opts;
+        opts.asyncOp = false;
+        NCCL(p)->allgather(outputs, inputs, opts)->wait();
+    )
+}
+
+void atd_process_group_nccl_scatter(nccl p, tensor output_tensor, tensor *input_tensors, int ninput_tensors, int root_rank) {
+    PROTECT(
+        std::vector<std::vector<at::Tensor>> inputs(1);
+        for (int i = 0; i < ninput_tensors; ++i)
+            inputs[0].push_back(*(input_tensors[i]));
+        std::vector<at::Tensor> outputs = {*output_tensor};
+        c10d::ScatterOptions opts;
+        opts.rootRank = root_rank;
+        NCCL(p)->scatter(outputs, inputs, opts)->wait();
+    )
+}
+
+#endif

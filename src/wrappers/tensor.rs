@@ -555,6 +555,22 @@ impl Tensor {
         Ok(Tensor { c_tensor })
     }
 
+    /// Loads a tensor from a stream to a given device.
+    ///
+    /// The file format is the same as the one used by the PyTorch C++ API.
+    pub fn load_from_stream_with_device<T: Read + Seek>(
+        stream: T,
+        device: Device,
+    ) -> Result<Tensor, TchError> {
+        let adapter = ReadSeekAdapter::new(stream);
+        let boxed_stream: Box<Box<dyn ReadStream>> = Box::new(Box::new(adapter));
+        let c_tensor = unsafe_torch_err!(at_load_from_stream_with_device(
+            Box::into_raw(boxed_stream) as *mut c_void,
+            device.c_int()
+        ));
+        Ok(Tensor { c_tensor })
+    }
+
     /// Saves a tensor to a file.
     ///
     /// The file format is the same as the one used by the PyTorch C++ API.

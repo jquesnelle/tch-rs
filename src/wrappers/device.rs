@@ -83,7 +83,7 @@ impl Cuda {
 }
 
 impl Device {
-    pub(super) fn c_int(self) -> libc::c_int {
+    pub fn c_int(self) -> libc::c_int {
         match self {
             Device::Cpu => -1,
             Device::Cuda(device_index) => device_index as libc::c_int,
@@ -92,7 +92,7 @@ impl Device {
         }
     }
 
-    pub(super) fn from_c_int(v: libc::c_int) -> Self {
+    pub fn from_c_int(v: libc::c_int) -> Self {
         match v {
             -1 => Device::Cpu,
             -2 => Device::Mps,
