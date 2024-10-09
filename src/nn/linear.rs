@@ -42,7 +42,7 @@ pub fn linear<'a, T: Borrow<super::Path<'a>>>(
         None
     };
 
-    Linear { ws: vs.var("weight", &[out_dim, in_dim], c.ws_init), bs }
+    Linear { ws: vs.var_with_shard("weight", &[out_dim, in_dim], c.ws_init, c.shard), bs }
 }
 
 impl super::module::Module for Linear {

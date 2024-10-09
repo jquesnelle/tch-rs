@@ -589,6 +589,30 @@ impl<'a> Path<'a> {
         Ok(self.add(name, v, true, None))
     }
 
+    pub fn f_var_with_shard(
+        &self,
+        name: &str,
+        dims: &[i64],
+        init: Init,
+        shard: Option<Shard>,
+    ) -> Result<Tensor, TchError> {
+        let adjusted_dims = Self::adjust_dims_for_shard(dims, shard.as_ref());
+        let v = super::f_init(init, &adjusted_dims, self.device(), self.kind())?;
+        Ok(self.add(name, v, true, shard))
+    }
+
+    fn adjust_dims_for_shard(dims: &[i64], shard: Option<&Shard>) -> Vec<i64> {
+        if let Some(Shard { dim, rank: _, world_size }) = shard {
+            let mut adjusted_dims = dims.to_vec();
+            if *dim < adjusted_dims.len() {
+                adjusted_dims[*dim] = adjusted_dims[*dim] / *world_size as i64;
+            }
+            adjusted_dims
+        } else {
+            dims.to_vec()
+        }
+    }
+
     /// Creates a new variable initialized with zeros.
     ///
     /// The new variable is named according to the name parameter and
@@ -733,6 +757,10 @@ impl<'a> Path<'a> {
     /// related argument.
     pub fn var(&self, name: &str, dims: &[i64], init: Init) -> Tensor {
         self.f_var(name, dims, init).unwrap()
+    }
+
+    pub fn var_with_shard(&self, name: &str, dims: &[i64], init: Init, shard: Option<Shard>) -> Tensor {
+        self.f_var_with_shard(name, dims, init, shard).unwrap()
     }
 
     /// Creates a new variable initialized with zeros.
