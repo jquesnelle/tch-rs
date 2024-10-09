@@ -25,7 +25,7 @@ pub struct Var {
 pub struct Variables {
     pub named_variables: HashMap<String, Tensor>,
     pub shards: HashMap<String, Shard>,
-    pub trainable_variables: Vec<Var>,
+    pub trainable_variables: Vec<(Var, Option<Shard>)>,
 }
 
 /// A VarStore is used to store variables used by one or multiple layers.
@@ -149,7 +149,7 @@ impl VarStore {
     /// Returns all the trainable variables for this var-store.
     pub fn trainable_variables(&self) -> Vec<Tensor> {
         let variables = self.variables_.lock().unwrap();
-        variables.trainable_variables.iter().map(|v| v.tensor.shallow_clone()).collect()
+        variables.trainable_variables.iter().map(|v| v.0.tensor.shallow_clone()).collect()
     }
 
     /// Returns all variables along with their names.
@@ -332,7 +332,7 @@ impl VarStore {
     pub fn freeze(&mut self) {
         let variables = self.variables_.lock().unwrap();
         for variable in variables.trainable_variables.iter() {
-            let _v = variable.tensor.set_requires_grad(false);
+            let _v = variable.0.tensor.set_requires_grad(false);
         }
     }
 
@@ -342,7 +342,7 @@ impl VarStore {
     pub fn unfreeze(&mut self) {
         let variables = self.variables_.lock().unwrap();
         for variable in variables.trainable_variables.iter() {
-            let _v = variable.tensor.set_requires_grad(true);
+            let _v = variable.0.tensor.set_requires_grad(true);
         }
     }
 
@@ -525,7 +525,7 @@ impl<'a> Path<'a> {
         let tensor = if trainable { tensor.set_requires_grad(true) } else { tensor };
         if trainable {
             let var = Var { tensor: tensor.shallow_clone(), group: self.group };
-            variables.trainable_variables.push(var);
+            variables.trainable_variables.push((var, shard));
         };
         if let Some(shard) = shard {
             variables.shards.insert(path.clone(), shard);
@@ -539,6 +539,7 @@ impl<'a> Path<'a> {
         name: &str,
         tensor: Tensor,
         trainable: bool,
+        shard: Option<Shard>,
         mut variables: MutexGuard<Variables>,
     ) -> Tensor {
         let path = self.path(name);
@@ -549,7 +550,7 @@ impl<'a> Path<'a> {
         let tensor = if trainable { tensor.set_requires_grad(true) } else { tensor };
         if trainable {
             let var = Var { tensor: tensor.shallow_clone(), group: self.group };
-            variables.trainable_variables.push(var);
+            variables.trainable_variables.push((var, shard));
         }
         variables.named_variables.insert(path, tensor.shallow_clone());
         tensor
@@ -886,7 +887,7 @@ impl<'a> Entry<'a> {
     /// initialized according to the init parameter.
     pub fn or_var(self, dims: &[i64], init: Init) -> Tensor {
         let v = super::init(init, dims, self.path.device());
-        self.path.get_or_add_with_lock(self.name, v, true, self.variables)
+        self.path.get_or_add_with_lock(self.name, v, true, None, self.variables)
     }
 
     /// Returns the existing entry if, otherwise create a new variable.
@@ -919,7 +920,7 @@ impl<'a> Entry<'a> {
     /// Returns the existing entry if, otherwise create a new variable.
     pub fn or_ones_no_train(self, dims: &[i64]) -> Tensor {
         let o = Tensor::ones(dims, (Kind::Float, self.path.device()));
-        self.path.get_or_add_with_lock(self.name, o, true, self.variables)
+        self.path.get_or_add_with_lock(self.name, o, true, None, self.variables)
     }
 
     /// Returns the existing entry if, otherwise create a new variable.
@@ -946,7 +947,7 @@ impl<'a> Entry<'a> {
     /// Returns the existing entry if, otherwise create a new variable.
     pub fn or_zeros_no_train(self, dims: &[i64]) -> Tensor {
         let z = Tensor::zeros(dims, (Kind::Float, self.path.device()));
-        self.path.get_or_add_with_lock(self.name, z, true, self.variables)
+        self.path.get_or_add_with_lock(self.name, z, true, None, self.variables)
     }
 }
 
