@@ -286,6 +286,10 @@ bool tch_read_stream_seek_start(void *stream_ptr, uint64_t pos, uint64_t *new_po
 bool tch_read_stream_seek_end(void *stream_ptr, int64_t pos, uint64_t *new_pos);
 bool tch_read_stream_read(void *stream_ptr, uint8_t *buf, size_t size, size_t *new_pos);
 
+// distributed
+void* atd_new_process_group_nccl(int rank, int size);
+void atd_free_process_group_nccl(void* process);
+
 #ifdef __cplusplus
 };
 

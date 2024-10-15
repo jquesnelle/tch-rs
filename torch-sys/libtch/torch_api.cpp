@@ -10,6 +10,10 @@
 #include<torch/script.h>
 #include<torch/csrc/jit/passes/tensorexpr_fuser.h>
 #include<torch/csrc/jit/codegen/cuda/interface.h>
+#define USE_C10D_NCCL
+#include<torch/csrc/distributed/c10d/ProcessGroupNCCL.hpp>
+#include<torch/csrc/distributed/c10d/HashStore.hpp>
+#include<c10/util/intrusive_ptr.h>
 #include<stdexcept>
 #include<vector>
 #include "torch_api.h"
@@ -1680,4 +1684,17 @@ void ati_free(ivalue i) {
 
 void at_set_graph_executor_optimize(bool o) {
   torch::jit::setGraphExecutorOptimize(o);
+}
+
+void* atd_new_process_group_nccl(int rank, int size) {
+  PROTECT(
+    auto store = c10::make_intrusive<c10d::HashStore>();
+    auto process_group = new c10d::ProcessGroupNCCL(store, rank, size);
+    return (void*)process_group;
+  )
+  return nullptr;
+}
+
+void atd_free_process_group_nccl(void *p) {
+  delete (c10d::ProcessGroupNCCL*)p;
 }
