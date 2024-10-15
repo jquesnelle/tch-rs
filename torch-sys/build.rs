@@ -250,6 +250,9 @@ impl SystemInfo {
             libtorch_lib_dir = Some(lib.join("lib"));
             env_var_rerun("LIBTORCH_CXX11_ABI").unwrap_or_else(|_| "1".to_owned())
         };
+        if let Ok(cuda_root) = env_var_rerun("CUDA_ROOT") {
+            libtorch_include_dirs.push(PathBuf::from(cuda_root).join("include"))
+        }
         let libtorch_lib_dir = libtorch_lib_dir.expect("no libtorch lib dir found");
         let link_type = match env_var_rerun("LIBTORCH_STATIC").as_deref() {
             Err(_) | Ok("0") | Ok("false") | Ok("FALSE") => LinkType::Dynamic,
