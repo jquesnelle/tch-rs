@@ -213,6 +213,12 @@ impl Optimizer {
         self.opt.zero_grad().unwrap()
     }
 
+    /// Zeroes the gradient for the tensors tracked by this optimizer.
+    pub fn zero_grad_with_set_to_none(&mut self, set_to_none: bool) {
+        self.add_missing_variables();
+        self.opt.zero_grad_with_set_to_none(set_to_none).unwrap()
+    }
+
     /// Clips gradient value at some specified maximum value.
     pub fn clip_grad_value(&self, max: f64) {
         let v = self.variables.lock().unwrap();

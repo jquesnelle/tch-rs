@@ -99,6 +99,10 @@ extern "C" {
     pub fn at_save_to_stream(arg: *mut C_tensor, stream_ptr: *mut c_void);
     pub fn at_load(filename: *const c_char) -> *mut C_tensor;
     pub fn at_load_from_stream(stream_ptr: *mut c_void) -> *mut C_tensor;
+    pub fn at_load_from_stream_with_device(
+        stream_ptr: *mut c_void,
+        device_id: c_int,
+    ) -> *mut C_tensor;
     pub fn at_save_multi(
         args: *const *mut C_tensor,
         names: *const *const c_char,
@@ -211,6 +215,7 @@ extern "C" {
     pub fn ato_set_weight_decay(arg: *mut C_optimizer, weight_decay: f64);
     pub fn ato_set_weight_decay_group(arg: *mut C_optimizer, group: size_t, weight_decay: f64);
     pub fn ato_zero_grad(arg: *mut C_optimizer);
+    pub fn ato_zero_grad_with_set_to_none(arg: *mut C_optimizer, set_to_none: bool);
     pub fn ato_step(arg: *mut C_optimizer);
     pub fn ato_free(arg: *mut C_optimizer);
     pub fn at_save_image(arg: *mut C_tensor, filename: *const c_char) -> c_int;

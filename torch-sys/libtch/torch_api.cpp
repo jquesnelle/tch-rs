@@ -511,6 +511,22 @@ tensor at_load_from_stream(void *stream_ptr) {
   return nullptr;
 }
 
+tensor at_load_from_stream_with_device(void *stream_ptr, int device_id) {
+  PROTECT(
+    torch::NoGradGuard no_grad;
+    torch::Tensor tensor;
+    auto adapter = std::shared_ptr<caffe2::serialize::ReadAdapterInterface>(new ReadStreamAdapter(stream_ptr));
+    torch::load(
+      tensor,
+      [adapter](uint64_t pos, void *buf, size_t nbytes){ return adapter->read(pos, buf, nbytes, "tensor" ); },
+      [adapter]() { return adapter->size(); },
+      device_of_int(device_id)
+    );
+    return new torch::Tensor(tensor);
+  )
+  return nullptr;
+}
+
 tensor at_load_image(char *filename) {
   PROTECT(
     int w = -1;
@@ -909,6 +925,10 @@ void ato_set_weight_decay_group(optimizer t, size_t group, double weight_decay) 
 
 void ato_zero_grad(optimizer t) {
   PROTECT(t->zero_grad();)
+}
+
+void ato_zero_grad_with_set_to_none(optimizer t, bool set_to_none) {
+  PROTECT(t->zero_grad(set_to_none);)
 }
 
 void ato_step(optimizer t) {

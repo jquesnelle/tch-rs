@@ -76,6 +76,7 @@ void at_save(tensor, char *filename);
 void at_save_to_stream(tensor t, void *stream_ptr);
 tensor at_load(char *filename);
 tensor at_load_from_stream(void *stream_ptr);
+tensor at_load_from_stream_with_device(void *stream_ptr, int device_id);
 tensor at_load_image(char *filename);
 tensor at_load_image_from_memory(unsigned char *img_data, size_t img_size);
 int at_save_image(tensor, char *filename);
@@ -145,6 +146,7 @@ void ato_set_momentum_group(optimizer, size_t group, double momentum);
 void ato_set_weight_decay(optimizer t, double weight_decay);
 void ato_set_weight_decay_group(optimizer t, size_t group, double weight_decay);
 void ato_zero_grad(optimizer);
+void ato_zero_grad_with_set_to_none(optimizer, bool set_to_none);
 void ato_step(optimizer);
 void ato_free(optimizer);
 
