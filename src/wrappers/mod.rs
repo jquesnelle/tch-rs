@@ -11,6 +11,7 @@ pub(crate) mod image;
 pub mod jit;
 pub mod kind;
 pub(crate) mod layout;
+pub(crate) mod nccl;
 pub(crate) mod optimizer;
 #[cfg(feature = "python-extension")]
 pub mod python;
