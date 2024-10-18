@@ -342,3 +342,36 @@ extern "C" {
 extern "C" {
     pub fn dummy_cuda_dependency();
 }
+
+#[repr(C)]
+pub struct CNCCL_ {
+    _private: [u8; 0],
+}
+
+#[repr(C)]
+pub struct CStore_ {
+    _private: [u8; 0],
+}
+
+extern "C" {
+    pub fn atd_new_hash_store() -> *mut CStore_;
+    pub fn atd_free_hash_store(s: *mut CStore_);
+    pub fn atd_new_process_group_nccl(
+        store: *mut CStore_,
+        rank: c_int,
+        size: c_int,
+        device_id: c_int,
+    ) -> *mut CNCCL_;
+    pub fn atd_free_process_group_nccl(n: *mut CNCCL_);
+    pub fn atd_process_group_nccl_group_allreduce(
+        n: *mut CNCCL_,
+        args: *const *mut C_tensor,
+        ntensors: c_int,
+        redOpType: c_uchar,
+    );
+    pub fn atd_process_group_nccl_barrier(n: *mut CNCCL_, device_id: c_int);
+    pub fn atd_process_group_nccl_group_differentiable_allreduce_sum(
+        n: *mut CNCCL_,
+        arg: *mut C_tensor,
+    );
+}

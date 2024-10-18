@@ -500,6 +500,9 @@ fn main() -> anyhow::Result<()> {
         if use_hip {
             system_info.link("c10_hip");
         }
+        if use_cuda {
+            system_info.link("c10_cuda");
+        }
 
         let target = env::var("TARGET").context("TARGET variable not set")?;
 

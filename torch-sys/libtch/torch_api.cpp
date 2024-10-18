@@ -1021,6 +1021,10 @@ void atc_set_benchmark_cudnn(int b) {
   )
 }
 
+void atc_set_device(int64_t device_index) {
+  PROTECT(c10::cuda::set_device(device_index);)
+}
+
 bool at_context_has_openmp() {
   PROTECT (
   return at::globalContext().hasOpenMP();
@@ -1686,15 +1690,91 @@ void at_set_graph_executor_optimize(bool o) {
   torch::jit::setGraphExecutorOptimize(o);
 }
 
-void* atd_new_process_group_nccl(int rank, int size) {
+store atd_new_hash_store() {
   PROTECT(
-    auto store = c10::make_intrusive<c10d::HashStore>();
-    auto process_group = new c10d::ProcessGroupNCCL(store, rank, size);
-    return (void*)process_group;
+    auto hash_store = new c10::intrusive_ptr(std::make_unique<c10d::HashStore>());
+    return hash_store;
   )
   return nullptr;
 }
 
-void atd_free_process_group_nccl(void *p) {
-  delete (c10d::ProcessGroupNCCL*)p;
+void atd_free_hash_store(store p) {
+  delete reinterpret_cast<c10::intrusive_ptr<c10d::HashStore>*>(p);
+}
+
+nccl atd_new_process_group_nccl(store s, int rank, int size, int device_id) {
+  PROTECT(
+    auto process_group = new c10d::ProcessGroupNCCL(
+      *reinterpret_cast<c10::intrusive_ptr<c10d::HashStore>*>(s),
+      rank,
+      size
+    );
+    process_group->setSequenceNumberForGroup();
+    process_group->eagerConnectSingleDevice(device_of_int(device_id));
+    return process_group;
+  )
+  return nullptr;
+}
+
+void atd_free_process_group_nccl(nccl p) {
+  delete reinterpret_cast<c10d::ProcessGroupNCCL*>(p);
+}
+
+#define NCCL(X) (reinterpret_cast<c10d::ProcessGroupNCCL*>(X))
+
+void atd_process_group_nccl_group_start(nccl p) {
+  NCCL(p)->groupStart();
+}
+
+void atd_process_group_nccl_group_end(nccl p) {
+  NCCL(p)->groupStart();
+}
+
+void atd_process_group_nccl_group_allreduce(nccl p, tensor *tensors, int ntensors, uint8_t redOpType) {
+  PROTECT(
+    std::vector<at::Tensor> inputs;
+    for (int i = 0; i < ntensors; ++i)
+      inputs.push_back(*(tensors[i]));
+    c10d::AllreduceOptions opts;
+    opts.reduceOp = c10d::ReduceOp(c10d::ReduceOp::RedOpType(redOpType));
+    NCCL(p)->allreduce(inputs, opts)->wait();
+  )
+}
+
+void atd_process_group_nccl_barrier(nccl p, int device_id) {
+  PROTECT(
+    auto options = c10d::BarrierOptions();
+    options.device = device_of_int(device_id);
+    options.device_ids.push_back(device_id);
+    NCCL(p)->barrier(options)->wait();
+  )
+}
+
+class DifferentiableAllReduceSum : public torch::autograd::Function<DifferentiableAllReduceSum> {
+public:
+  static torch::autograd::Variable forward(
+        torch::autograd::AutogradContext *ctx,
+        torch::autograd::Variable tensor,
+        c10d::Backend* backend
+        ) {
+        std::vector<at::Tensor> inputs = {tensor};
+        c10d::AllreduceOptions opts;
+        opts.reduceOp = c10d::ReduceOp(c10d::ReduceOp::RedOpType(c10d::ReduceOp::SUM));
+        backend->allreduce(inputs, opts)->wait();
+        return tensor;
+    }
+
+    static torch::autograd::variable_list backward(
+        torch::autograd::AutogradContext *ctx,
+        torch::autograd::variable_list grad_output) {
+        return {grad_output[0], torch::autograd::Variable()};
+    }
+};
+
+void atd_process_group_nccl_group_differentiable_allreduce_sum(nccl p, tensor t) {
+  PROTECT(
+    c10d::ProcessGroupNCCL* pg = NCCL(p);
+    c10d::Backend* backend = pg;
+    DifferentiableAllReduceSum::apply(*t, backend);
+  )
 }

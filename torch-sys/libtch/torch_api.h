@@ -14,6 +14,8 @@ typedef torch::Scalar *scalar;
 typedef torch::optim::Optimizer *optimizer;
 typedef torch::jit::script::Module *module;
 typedef torch::jit::IValue *ivalue;
+typedef void *nccl;
+typedef void *store;
 #define PROTECT(x) \
   try { \
     x \
@@ -26,6 +28,8 @@ typedef void *optimizer;
 typedef void *scalar;
 typedef void *module;
 typedef void *ivalue;
+typedef void *nccl;
+typedef void *store;
 #endif
 
 char *get_and_reset_last_err(); // thread-local
@@ -197,6 +201,7 @@ void atc_synchronize(int64_t device_index);
 int atc_user_enabled_cudnn();
 void atc_set_user_enabled_cudnn(int b);
 void atc_set_benchmark_cudnn(int b);
+void atc_set_device(int64_t device_index);
 
 module atm_load(char *);
 module atm_load_on_device(char *, int device);
@@ -287,8 +292,13 @@ bool tch_read_stream_seek_end(void *stream_ptr, int64_t pos, uint64_t *new_pos);
 bool tch_read_stream_read(void *stream_ptr, uint8_t *buf, size_t size, size_t *new_pos);
 
 // distributed
-void* atd_new_process_group_nccl(int rank, int size);
-void atd_free_process_group_nccl(void* process);
+store atd_new_hash_store();
+void atd_free_hash_store(store p);
+nccl atd_new_process_group_nccl(store s, int rank, int size, int device_id);
+void atd_free_process_group_nccl(nccl process);
+void atd_process_group_nccl_group_allreduce(nccl p, tensor *tensors, int ntensors, uint8_t redOpType);
+void atd_process_group_nccl_barrier(nccl p, int device_id);
+void atd_process_group_nccl_group_differentiable_allreduce_sum(nccl p, tensor t);
 
 #ifdef __cplusplus
 };
