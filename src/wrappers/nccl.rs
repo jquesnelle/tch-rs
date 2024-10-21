@@ -55,7 +55,7 @@ impl CNCCL {
         reduction: ReduceOpType,
     ) -> Result<(), TchError> {
         let c_tensors = tensors.iter().map(|x| x.as_ref().c_tensor).collect::<Vec<_>>();
-        unsafe_torch_err!(torch_sys::atd_process_group_nccl_group_allreduce(
+        unsafe_torch_err!(torch_sys::atd_process_group_nccl_allreduce(
             self.cnccl,
             c_tensors.as_ptr(),
             c_tensors.len() as c_int,
@@ -70,10 +70,75 @@ impl CNCCL {
     }
 
     pub fn differentiable_all_reduce_sum(&self, tensor: &Tensor) -> Result<(), TchError> {
-        unsafe_torch_err!(torch_sys::atd_process_group_nccl_group_differentiable_allreduce_sum(
+        unsafe_torch_err!(torch_sys::atd_process_group_nccl_differentiable_allreduce_sum(
             self.cnccl,
             tensor.c_tensor
         ));
+        Ok(())
+    }
+
+    pub fn send<T: AsRef<Tensor>>(&self, tensors: &[T], dst_rank: i64) -> Result<(), TchError> {
+        let c_tensors = tensors.iter().map(|x| x.as_ref().c_tensor).collect::<Vec<_>>();
+        unsafe_torch_err!(torch_sys::atd_process_group_nccl_send(
+            self.cnccl,
+            c_tensors.as_ptr(),
+            c_tensors.len() as c_int,
+            dst_rank as c_int,
+        ));
+        Ok(())
+    }
+
+    pub fn recv<T: AsRef<Tensor>>(&self, tensors: &[T], src_rank: i64) -> Result<(), TchError> {
+        let c_tensors = tensors.iter().map(|x| x.as_ref().c_tensor).collect::<Vec<_>>();
+        unsafe_torch_err!(torch_sys::atd_process_group_nccl_recv(
+            self.cnccl,
+            c_tensors.as_ptr(),
+            c_tensors.len() as c_int,
+            src_rank as c_int,
+        ));
+        Ok(())
+    }
+
+    pub fn all_gather<T: AsRef<Tensor>>(
+        &self,
+        output_tensors: &[T],
+        input_tensor: &Tensor,
+    ) -> Result<(), TchError> {
+        let c_output_tensors =
+            output_tensors.iter().map(|x| x.as_ref().c_tensor).collect::<Vec<_>>();
+        unsafe_torch_err!(torch_sys::atd_process_group_nccl_allgather(
+            self.cnccl,
+            c_output_tensors.as_ptr(),
+            c_output_tensors.len() as c_int,
+            input_tensor.c_tensor
+        ));
+        Ok(())
+    }
+
+    pub fn scatter<T: AsRef<Tensor>>(
+        &self,
+        output_tensor: &Tensor,
+        input_tensors: &[T],
+        root_rank: i64,
+    ) -> Result<(), TchError> {
+        let c_input_tensors = input_tensors.iter().map(|x| x.as_ref().c_tensor).collect::<Vec<_>>();
+        unsafe_torch_err!(torch_sys::atd_process_group_nccl_scatter(
+            self.cnccl,
+            output_tensor.c_tensor,
+            c_input_tensors.as_ptr(),
+            c_input_tensors.len() as c_int,
+            root_rank as c_int
+        ));
+        Ok(())
+    }
+
+    pub fn group_start(&self) -> Result<(), TchError> {
+        unsafe_torch_err!(torch_sys::atd_process_group_nccl_group_start(self.cnccl));
+        Ok(())
+    }
+
+    pub fn group_end(&self) -> Result<(), TchError> {
+        unsafe_torch_err!(torch_sys::atd_process_group_nccl_group_end(self.cnccl));
         Ok(())
     }
 }

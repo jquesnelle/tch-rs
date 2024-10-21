@@ -363,15 +363,39 @@ extern "C" {
         device_id: c_int,
     ) -> *mut CNCCL_;
     pub fn atd_free_process_group_nccl(n: *mut CNCCL_);
-    pub fn atd_process_group_nccl_group_allreduce(
+    pub fn atd_process_group_nccl_allreduce(
         n: *mut CNCCL_,
         args: *const *mut C_tensor,
         ntensors: c_int,
         redOpType: c_uchar,
     );
     pub fn atd_process_group_nccl_barrier(n: *mut CNCCL_, device_id: c_int);
-    pub fn atd_process_group_nccl_group_differentiable_allreduce_sum(
+    pub fn atd_process_group_nccl_differentiable_allreduce_sum(n: *mut CNCCL_, arg: *mut C_tensor);
+    pub fn atd_process_group_nccl_send(
         n: *mut CNCCL_,
-        arg: *mut C_tensor,
+        args: *const *mut C_tensor,
+        ntensors: c_int,
+        dst_rank: c_int,
+    );
+    pub fn atd_process_group_nccl_recv(
+        n: *mut CNCCL_,
+        args: *const *mut C_tensor,
+        ntensors: c_int,
+        src_rank: c_int,
+    );
+    pub fn atd_process_group_nccl_group_start(n: *mut CNCCL_);
+    pub fn atd_process_group_nccl_group_end(n: *mut CNCCL_);
+    pub fn atd_process_group_nccl_allgather(
+        n: *mut CNCCL_,
+        output_tensors: *const *mut C_tensor,
+        noutput_tensors: c_int,
+        input_tensor: *mut C_tensor,
+    );
+    pub fn atd_process_group_nccl_scatter(
+        n: *mut CNCCL_,
+        output_tensor: *mut C_tensor,
+        input_tensors: *const *mut C_tensor,
+        ninput_tensors: c_int,
+        root_rank: c_int,
     );
 }

@@ -1723,14 +1723,14 @@ void atd_free_process_group_nccl(nccl p) {
 #define NCCL(X) (reinterpret_cast<c10d::ProcessGroupNCCL*>(X))
 
 void atd_process_group_nccl_group_start(nccl p) {
-  NCCL(p)->groupStart();
+  PROTECT(NCCL(p)->groupStart();)
 }
 
 void atd_process_group_nccl_group_end(nccl p) {
-  NCCL(p)->groupStart();
+  PROTECT(NCCL(p)->groupStart();)
 }
 
-void atd_process_group_nccl_group_allreduce(nccl p, tensor *tensors, int ntensors, uint8_t redOpType) {
+void atd_process_group_nccl_allreduce(nccl p, tensor *tensors, int ntensors, uint8_t redOpType) {
   PROTECT(
     std::vector<at::Tensor> inputs;
     for (int i = 0; i < ntensors; ++i)
@@ -1771,10 +1771,52 @@ public:
     }
 };
 
-void atd_process_group_nccl_group_differentiable_allreduce_sum(nccl p, tensor t) {
+void atd_process_group_nccl_differentiable_allreduce_sum(nccl p, tensor t) {
   PROTECT(
     c10d::ProcessGroupNCCL* pg = NCCL(p);
     c10d::Backend* backend = pg;
     DifferentiableAllReduceSum::apply(*t, backend);
+  )
+}
+
+void atd_process_group_nccl_send(nccl p,  tensor *tensors, int ntensors, int dstRank) {
+  PROTECT(
+    std::vector<at::Tensor> inputs;
+    for (int i = 0; i < ntensors; ++i)
+      inputs.push_back(*(tensors[i]));
+    NCCL(p)->send(inputs, dstRank, 0)->wait();
+  )
+}
+
+void atd_process_group_nccl_recv(nccl p, tensor *tensors, int ntensors, int srcRank) {
+  PROTECT(
+    std::vector<at::Tensor> inputs;
+    for (int i = 0; i < ntensors; ++i)
+      inputs.push_back(*(tensors[i]));
+    NCCL(p)->recv(inputs, srcRank, 0)->wait();
+  )  
+}
+
+void atd_process_group_nccl_allgather(nccl p, tensor *output_tensors, int noutput_tensors, tensor input_tensor) {
+  PROTECT(
+    std::vector<std::vector<at::Tensor>> outputs(1);
+    for (int i = 0; i < noutput_tensors; ++i)
+      outputs[0].push_back(*(output_tensors[i]));
+    std::vector<at::Tensor> inputs = {*input_tensor};
+    c10d::AllgatherOptions opts;
+    opts.asyncOp = false;
+    NCCL(p)->allgather(outputs, inputs, opts)->wait();
+  )
+}
+
+void atd_process_group_nccl_scatter(nccl p, tensor output_tensor, tensor *input_tensors, int ninput_tensors, int root_rank) {
+  PROTECT(
+    std::vector<std::vector<at::Tensor>> inputs(1);
+    for (int i = 0; i < ninput_tensors; ++i)
+      inputs[0].push_back(*(input_tensors[i]));
+    std::vector<at::Tensor> outputs = {*output_tensor};
+    c10d::ScatterOptions opts;
+    opts.rootRank = root_rank;
+    NCCL(p)->scatter(outputs, inputs, opts)->wait();
   )
 }
