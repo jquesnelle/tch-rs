@@ -63,20 +63,28 @@ pub struct Shard {
 
 impl Default for Shard {
     fn default() -> Self {
-        Self {
-            dim: 0,
-            rank: 0,
-            world_size: 1,
-        }
+        Self { dim: 0, rank: 0, world_size: 1 }
     }
 }
 
 impl VarStore {
     /// Creates a new var-store located on the specified device.
     pub fn new(device: Device) -> VarStore {
-        let variables =
-            Variables { named_variables: HashMap::new(), trainable_variables: Vec::new(), shards: HashMap::new() };
+        let variables = Variables {
+            named_variables: HashMap::new(),
+            trainable_variables: Vec::new(),
+            shards: HashMap::new(),
+        };
         VarStore { variables_: Arc::new(Mutex::new(variables)), device, kind: Kind::Float }
+    }
+
+    pub fn new_with_kind(device: Device, kind: Kind) -> VarStore {
+        let variables = Variables {
+            named_variables: HashMap::new(),
+            trainable_variables: Vec::new(),
+            shards: HashMap::new(),
+        };
+        VarStore { variables_: Arc::new(Mutex::new(variables)), device, kind }
     }
 
     pub fn merge(var_stores: Vec<(VarStore, Option<&str>)>) -> Result<VarStore, TchError> {
@@ -85,8 +93,11 @@ impl VarStore {
         if var_stores.is_empty() {
             Ok(new_var_store)
         } else {
-            let mut new_variables =
-                Variables { named_variables: HashMap::new(), trainable_variables: Vec::new(), shards: HashMap::new() };
+            let mut new_variables = Variables {
+                named_variables: HashMap::new(),
+                trainable_variables: Vec::new(),
+                shards: HashMap::new(),
+            };
             let device = var_stores[0].0.device();
 
             for (var_store, prefix) in var_stores {
@@ -519,7 +530,13 @@ impl<'a> Path<'a> {
         self.set_float_kind(Kind::Double);
     }
 
-    pub(crate) fn add(&self, name: &str, tensor: Tensor, trainable: bool, shard: Option<Shard>) -> Tensor {
+    pub(crate) fn add(
+        &self,
+        name: &str,
+        tensor: Tensor,
+        trainable: bool,
+        shard: Option<Shard>,
+    ) -> Tensor {
         let path = self.path(name);
         let mut variables = self.var_store.variables_.lock().unwrap();
         let path = if variables.named_variables.contains_key(&path) {
@@ -765,7 +782,13 @@ impl<'a> Path<'a> {
         self.f_var(name, dims, init).unwrap()
     }
 
-    pub fn var_with_shard(&self, name: &str, dims: &[i64], init: Init, shard: Option<Shard>) -> Tensor {
+    pub fn var_with_shard(
+        &self,
+        name: &str,
+        dims: &[i64],
+        init: Init,
+        shard: Option<Shard>,
+    ) -> Tensor {
         self.f_var_with_shard(name, dims, init, shard).unwrap()
     }
 
