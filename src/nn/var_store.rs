@@ -162,6 +162,11 @@ impl VarStore {
             .collect()
     }
 
+    pub fn shards(&self) -> HashMap<String, Shard> {
+        let variables = self.variables_.lock().unwrap();
+        variables.shards.clone()
+    }
+
     /// Gets the root path for this variable store.
     ///
     /// Variables are named and organized using paths. This function returns
