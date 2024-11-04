@@ -10,10 +10,11 @@
 #include<torch/script.h>
 #include<torch/csrc/jit/passes/tensorexpr_fuser.h>
 #include<torch/csrc/jit/codegen/cuda/interface.h>
-#define USE_C10D_NCCL
+#ifdef USE_C10D_NCCL
 #include<torch/csrc/distributed/c10d/ProcessGroupNCCL.hpp>
 #include<torch/csrc/distributed/c10d/HashStore.hpp>
 #include<c10/util/intrusive_ptr.h>
+#endif
 #include<stdexcept>
 #include<vector>
 #include "torch_api.h"
@@ -1021,10 +1022,6 @@ void atc_set_benchmark_cudnn(int b) {
   )
 }
 
-void atc_set_device(int64_t device_index) {
-  PROTECT(c10::cuda::set_device(device_index);)
-}
-
 bool at_context_has_openmp() {
   PROTECT (
   return at::globalContext().hasOpenMP();
@@ -1690,6 +1687,8 @@ void at_set_graph_executor_optimize(bool o) {
   torch::jit::setGraphExecutorOptimize(o);
 }
 
+#ifdef USE_C10D_NCCL
+
 store atd_new_hash_store() {
   PROTECT(
     auto hash_store = new c10::intrusive_ptr(std::make_unique<c10d::HashStore>());
@@ -1820,3 +1819,5 @@ void atd_process_group_nccl_scatter(nccl p, tensor output_tensor, tensor *input_
     NCCL(p)->scatter(outputs, inputs, opts)->wait();
   )
 }
+
+#endif

@@ -13,6 +13,7 @@ pub use wrappers::jit::{self, CModule, IValue, TrainableCModule};
 pub use wrappers::kind::{self, Kind};
 pub use wrappers::layout::Layout;
 pub use wrappers::optimizer::COptimizer;
+#[cfg(feature = "nccl")]
 pub use wrappers::nccl::{CNCCL, CStore, ReduceOpType};
 #[cfg(feature = "python-extension")]
 pub use wrappers::python;

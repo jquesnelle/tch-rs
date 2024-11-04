@@ -80,10 +80,6 @@ impl Cuda {
     pub fn cudnn_set_benchmark(b: bool) {
         unsafe_torch!(torch_sys::cuda::atc_set_benchmark_cudnn(i32::from(b)))
     }
-
-    pub fn set_device(device_index: i64) {
-        unsafe_torch!(torch_sys::cuda::atc_set_device(device_index));
-    }
 }
 
 impl Device {

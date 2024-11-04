@@ -201,7 +201,6 @@ void atc_synchronize(int64_t device_index);
 int atc_user_enabled_cudnn();
 void atc_set_user_enabled_cudnn(int b);
 void atc_set_benchmark_cudnn(int b);
-void atc_set_device(int64_t device_index);
 
 module atm_load(char *);
 module atm_load_on_device(char *, int device);
@@ -291,6 +290,7 @@ bool tch_read_stream_seek_start(void *stream_ptr, uint64_t pos, uint64_t *new_po
 bool tch_read_stream_seek_end(void *stream_ptr, int64_t pos, uint64_t *new_pos);
 bool tch_read_stream_read(void *stream_ptr, uint8_t *buf, size_t size, size_t *new_pos);
 
+#ifdef USE_C10D_NCCL
 // distributed
 store atd_new_hash_store();
 void atd_free_hash_store(store p);
@@ -305,6 +305,7 @@ void atd_process_group_nccl_group_start(nccl p);
 void atd_process_group_nccl_group_end(nccl p);
 void atd_process_group_nccl_allgather(nccl p, tensor *output_tensors, int noutput_tensors, tensor input_tensor);
 void atd_process_group_nccl_scatter(nccl p, tensor output_tensor, tensor *input_tensors, int ninput_tensors, int root_rank);
+#endif
 
 #ifdef __cplusplus
 };
