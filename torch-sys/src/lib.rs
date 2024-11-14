@@ -145,6 +145,8 @@ extern "C" {
         device_id: c_int,
     );
 
+    pub fn at_set_anomaly_mode_enabled(enabled: bool, check_nan: bool);
+
     pub fn at_manual_seed(seed: i64);
     pub fn at_set_graph_executor_optimize(b: bool);
     pub fn at_context_has_openmp() -> bool;

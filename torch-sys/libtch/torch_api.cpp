@@ -1687,6 +1687,10 @@ void at_set_graph_executor_optimize(bool o) {
   torch::jit::setGraphExecutorOptimize(o);
 }
 
+void at_set_anomaly_mode_enabled(bool enabled, bool check_nan) {
+  torch::autograd::AnomalyMode::set_enabled(enabled, check_nan);
+}
+
 #ifdef USE_C10D_NCCL
 
 store atd_new_hash_store() {
