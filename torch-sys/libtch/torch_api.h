@@ -301,13 +301,16 @@ nccl atd_new_process_group_nccl(store s, int rank, int size, int device_id);
 void atd_free_process_group_nccl(nccl process);
 void atd_process_group_nccl_allreduce(nccl p, tensor *tensors, int ntensors, uint8_t redOpType);
 void atd_process_group_nccl_barrier(nccl p, int device_id);
-void atd_process_group_nccl_differentiable_allreduce_sum(nccl p, tensor t);
 void atd_process_group_nccl_send(nccl p,  tensor *tensors, int ntensors, int dstRank);
 void atd_process_group_nccl_recv(nccl p, tensor *tensors, int ntensors, int srcRank);
 void atd_process_group_nccl_group_start(nccl p);
 void atd_process_group_nccl_group_end(nccl p);
 void atd_process_group_nccl_allgather(nccl p, tensor *output_tensors, int noutput_tensors, tensor input_tensor);
 void atd_process_group_nccl_scatter(nccl p, tensor output_tensor, tensor *input_tensors, int ninput_tensors, int root_rank);
+tensor atd_process_group_nccl_copy_to_model_parallel(nccl p, tensor t);
+tensor atd_process_group_nccl_reduce_from_model_parallel(nccl p, tensor t);
+tensor atd_process_group_nccl_scatter_to_model_parallel(nccl p, tensor t, int64_t world_size, int64_t rank);
+tensor atd_process_group_nccl_gather_from_model_parallel(nccl p, tensor t, int64_t world_size, int64_t rank);
 #endif
 
 #ifdef __cplusplus

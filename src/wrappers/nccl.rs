@@ -69,12 +69,40 @@ impl CNCCL {
         Ok(())
     }
 
-    pub fn differentiable_all_reduce_sum(&self, tensor: &Tensor) -> Result<(), TchError> {
-        unsafe_torch_err!(torch_sys::atd_process_group_nccl_differentiable_allreduce_sum(
+    pub fn copy_to_model_parallel(&self, tensor: &Tensor) -> Result<Tensor, TchError> {
+        let output = unsafe_torch_err!(torch_sys::atd_process_group_nccl_copy_to_model_parallel(
             self.cnccl,
             tensor.c_tensor
         ));
-        Ok(())
+        Ok(Tensor { c_tensor: output })
+    }
+
+    pub fn reduce_from_model_parallel(&self, tensor: &Tensor) -> Result<Tensor, TchError> {
+        let output = unsafe_torch_err!(torch_sys::atd_process_group_nccl_reduce_from_model_parallel(
+            self.cnccl,
+            tensor.c_tensor
+        ));
+        Ok(Tensor { c_tensor: output })
+    }
+
+    pub fn scatter_to_model_parallel(&self, tensor: &Tensor) -> Result<Tensor, TchError> {
+        let output = unsafe_torch_err!(torch_sys::atd_process_group_nccl_scatter_to_model_parallel(
+            self.cnccl,
+            tensor.c_tensor,
+            self.size,
+            self.rank
+        ));
+        Ok(Tensor { c_tensor: output })
+    }
+
+    pub fn gather_from_model_parallel(&self, tensor: &Tensor) -> Result<Tensor, TchError> {
+        let output = unsafe_torch_err!(torch_sys::atd_process_group_nccl_gather_from_model_parallel(
+            self.cnccl,
+            tensor.c_tensor,
+            self.size,
+            self.rank
+        ));
+        Ok(Tensor { c_tensor: output })
     }
 
     pub fn send<T: AsRef<Tensor>>(&self, tensors: &[T], dst_rank: i64) -> Result<(), TchError> {

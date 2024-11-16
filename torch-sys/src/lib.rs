@@ -372,7 +372,6 @@ extern "C" {
         redOpType: c_uchar,
     );
     pub fn atd_process_group_nccl_barrier(n: *mut CNCCL_, device_id: c_int);
-    pub fn atd_process_group_nccl_differentiable_allreduce_sum(n: *mut CNCCL_, arg: *mut C_tensor);
     pub fn atd_process_group_nccl_send(
         n: *mut CNCCL_,
         args: *const *mut C_tensor,
@@ -400,4 +399,24 @@ extern "C" {
         ninput_tensors: c_int,
         root_rank: c_int,
     );
+    pub fn atd_process_group_nccl_copy_to_model_parallel(
+        p: *mut CNCCL_,
+        t: *mut C_tensor,
+    ) -> *mut C_tensor;
+    pub fn atd_process_group_nccl_reduce_from_model_parallel(
+        p: *mut CNCCL_,
+        t: *mut C_tensor,
+    ) -> *mut C_tensor;
+    pub fn atd_process_group_nccl_scatter_to_model_parallel(
+        p: *mut CNCCL_,
+        t: *mut C_tensor,
+        world_size: i64,
+        rank: i64,
+    ) -> *mut C_tensor;
+    pub fn atd_process_group_nccl_gather_from_model_parallel(
+        p: *mut CNCCL_,
+        t: *mut C_tensor,
+        world_size: i64,
+        rank: i64,
+    ) -> *mut C_tensor;
 }
