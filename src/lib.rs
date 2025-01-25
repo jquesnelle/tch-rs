@@ -32,3 +32,9 @@ pub use tensor::{
 
 pub mod nn;
 pub mod vision;
+
+pub fn maybe_init_cuda() {
+    unsafe {
+        torch_sys::dummy_cuda_dependency();
+    }
+}

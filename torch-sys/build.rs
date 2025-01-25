@@ -354,7 +354,13 @@ impl SystemInfo {
         }
     }
 
-    fn make(&self) {
+    fn make(&self, use_cuda: bool, use_hip: bool) {
+        let cuda_dependency = if use_cuda || use_hip {
+            "libtch/dummy_cuda_dependency.cpp"
+        } else {
+            "libtch/fake_cuda_dependency.cpp"
+        };
+        println!("cargo:rerun-if-changed={}", cuda_dependency);
         println!("cargo:rerun-if-changed=libtch/torch_python.cpp");
         println!("cargo:rerun-if-changed=libtch/torch_python.h");
         println!("cargo:rerun-if-changed=libtch/torch_api_generated.cpp");
@@ -364,7 +370,8 @@ impl SystemInfo {
         println!("cargo:rerun-if-changed=libtch/stb_image_write.h");
         println!("cargo:rerun-if-changed=libtch/stb_image_resize.h");
         println!("cargo:rerun-if-changed=libtch/stb_image.h");
-        let mut c_files = vec!["libtch/torch_api.cpp", "libtch/torch_api_generated.cpp"];
+        let mut c_files =
+            vec!["libtch/torch_api.cpp", "libtch/torch_api_generated.cpp", cuda_dependency];
         if cfg!(feature = "python-extension") {
             c_files.push("libtch/torch_python.cpp")
         }
@@ -444,9 +451,6 @@ fn main() -> anyhow::Result<()> {
         // if this issue.
         // TODO: Try out the as-needed native link modifier when it lands.
         // https://github.com/rust-lang/rust/issues/99424
-        //
-        // Update: it seems that the dummy dependency is not necessary anymore, so just
-        // removing it and keeping this comment around for legacy.
         let si_lib = &system_info.libtorch_lib_dir;
         let use_cuda =
             si_lib.join("libtorch_cuda.so").exists() || si_lib.join("torch_cuda.dll").exists();
@@ -458,7 +462,7 @@ fn main() -> anyhow::Result<()> {
             si_lib.join("libtorch_hip.so").exists() || si_lib.join("torch_hip.dll").exists();
         println!("cargo:rustc-link-search=native={}", si_lib.display());
 
-        system_info.make();
+        system_info.make(use_cuda, use_hip);
 
         println!("cargo:rustc-link-lib=static=tch");
         if use_cuda {
