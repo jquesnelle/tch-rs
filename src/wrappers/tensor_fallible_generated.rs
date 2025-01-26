@@ -27855,9 +27855,14 @@ impl Tensor {
         Ok(Tensor { c_tensor: c_tensors[0] })
     }
 
-    pub fn f_pin_memory(&self, device: Device) -> Result<Tensor, TchError> {
+    pub fn f_pin_memory(&self, device: Option<Device>) -> Result<Tensor, TchError> {
         let mut c_tensors = [std::ptr::null_mut(); 1];
-        unsafe_torch_err!(atg_pin_memory(c_tensors.as_mut_ptr(), self.c_tensor, device.c_int()));
+        unsafe_torch_err!(atg_pin_memory(
+            c_tensors.as_mut_ptr(),
+            self.c_tensor,
+            device.unwrap_or(Device::Cpu).c_int(),
+            device.is_none() as i8
+        ));
         Ok(Tensor { c_tensor: c_tensors[0] })
     }
 
