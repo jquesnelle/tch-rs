@@ -46,7 +46,7 @@ pub enum Kind {
 }
 
 impl Kind {
-    pub(super) fn c_int(self) -> libc::c_int {
+    pub fn c_int(self) -> libc::c_int {
         // These values should be in sync with include/c10/core/ScalarType.h
         match self {
             Kind::Uint8 => 0,
@@ -89,7 +89,7 @@ impl Kind {
         }
     }
 
-    pub(super) fn from_c_int(v: libc::c_int) -> Result<Kind, crate::TchError> {
+    pub fn from_c_int(v: libc::c_int) -> Result<Kind, crate::TchError> {
         match v {
             0 => Ok(Kind::Uint8),
             1 => Ok(Kind::Int8),
