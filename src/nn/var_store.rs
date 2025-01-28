@@ -87,6 +87,32 @@ impl VarStore {
         VarStore { variables_: Arc::new(Mutex::new(variables)), device, kind }
     }
 
+    pub fn from_tensors_and_shards(
+        tensors_and_shards: &[(String, Var, Option<Shard>)],
+        device: Device,
+        kind: Kind,
+    ) -> VarStore {
+        let variables = Variables {
+            named_variables: HashMap::from_iter(
+                tensors_and_shards
+                    .iter()
+                    .map(|(name, var, _)| (name.clone(), var.tensor.shallow_clone())),
+            ),
+            shards: HashMap::from_iter(
+                tensors_and_shards.iter().filter_map(|(name, _, shard)| {
+                    shard.map(|shard| (name.clone(), shard.clone()))
+                }),
+            ),
+            trainable_variables: tensors_and_shards
+                .iter()
+                .map(|(_, var, shard)| {
+                    (Var { tensor: var.tensor.shallow_clone(), group: var.group }, shard.clone())
+                })
+                .collect::<Vec<_>>(),
+        };
+        VarStore { variables_: Arc::new(Mutex::new(variables)), device, kind }
+    }
+
     pub fn merge(var_stores: Vec<(VarStore, Option<&str>)>) -> Result<VarStore, TchError> {
         let mut new_var_store = VarStore::new(Device::Cpu);
 
