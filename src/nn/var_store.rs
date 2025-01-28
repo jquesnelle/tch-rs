@@ -33,8 +33,8 @@ pub struct Variables {
 #[derive(Debug)]
 pub struct VarStore {
     pub variables_: Arc<Mutex<Variables>>,
-    device: Device,
-    kind: Kind,
+    pub device: Device,
+    pub kind: Kind,
 }
 
 /// A variable store with an associated path for variables naming.
