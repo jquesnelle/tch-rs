@@ -31,7 +31,7 @@ impl std::fmt::Debug for CStore {
 }
 
 impl CNCCL {
-    pub fn new(store: Arc<CStore>, rank: i64, size: i64, device: Device) -> Result<Self, TchError> {
+    pub fn new(store: &CStore, rank: i64, size: i64, device: Device) -> Result<Self, TchError> {
         let cnccl = unsafe_torch_err!(torch_sys::atd_new_process_group_nccl(
             store.cstore,
             rank as c_int,
