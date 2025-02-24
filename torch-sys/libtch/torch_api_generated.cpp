@@ -2159,7 +2159,7 @@ void atg__pdist_backward_out(tensor *out__, tensor out, tensor grad, tensor self
   )
 }
 
-void atg__pin_memory(tensor *out__, tensor self, int device, uint8_t device_null) {
+void atg__pin_memory(tensor *out__, tensor self, int device) {
   PROTECT(
     auto outputs__ = torch::_pin_memory(*self, device_of_int(device));
     out__[0] = new torch::Tensor(outputs__);
