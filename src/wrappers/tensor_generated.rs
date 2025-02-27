@@ -19090,14 +19090,14 @@ impl Tensor {
         self.f_upsample_nearest2d_vec(output_size, scale_factors).unwrap()
     }
 
-    pub fn upsample_nearest2d_vec_out(
-        &self,
-        out: &Tensor,
-        output_size: impl IntListOption,
-        scale_factors: impl DoubleList,
-    ) -> Tensor {
-        self.f_upsample_nearest2d_vec_out(out, output_size, scale_factors).unwrap()
-    }
+    // pub fn upsample_nearest2d_vec_out(
+    //     &self,
+    //     out: &Tensor,
+    //     output_size: impl IntListOption,
+    //     scale_factors: impl DoubleList,
+    // ) -> Tensor {
+    //     self.f_upsample_nearest2d_vec_out(out, output_size, scale_factors).unwrap()
+    // }
 
     pub fn upsample_nearest3d(
         &self,
