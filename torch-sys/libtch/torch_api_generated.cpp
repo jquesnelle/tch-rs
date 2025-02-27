@@ -18456,12 +18456,12 @@ void atg_upsample_nearest2d_vec(tensor *out__, tensor input, int64_t *output_siz
   )
 }
 
-void atg_upsample_nearest2d_vec_out(tensor *out__, tensor out, tensor input, int64_t *output_size_data, int output_size_len, double *scale_factors_data, int scale_factors_len) {
-  PROTECT(
-    auto outputs__ = torch::upsample_nearest2d_out(*out, *input, torch::IntArrayRef(output_size_data, output_size_len), at::ArrayRef<double>(scale_factors_data, scale_factors_len));
-    out__[0] = new torch::Tensor(outputs__);
-  )
-}
+// void atg_upsample_nearest2d_vec_out(tensor *out__, tensor out, tensor input, int64_t *output_size_data, int output_size_len, double *scale_factors_data, int scale_factors_len) {
+//   PROTECT(
+//     auto outputs__ = torch::upsample_nearest2d_out(*out, *input, torch::IntArrayRef(output_size_data, output_size_len), at::ArrayRef<double>(scale_factors_data, scale_factors_len));
+//     out__[0] = new torch::Tensor(outputs__);
+//   )
+// }
 
 void atg_upsample_nearest3d(tensor *out__, tensor self, int64_t *output_size_data, int output_size_len, double scales_d_v, uint8_t scales_d_null, double scales_h_v, uint8_t scales_h_null, double scales_w_v, uint8_t scales_w_null) {
   PROTECT(

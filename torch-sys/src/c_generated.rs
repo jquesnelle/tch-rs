@@ -15431,15 +15431,15 @@ extern "C" {
         scale_factors_data: *const f64,
         scale_factors_len: c_int,
     );
-    pub fn atg_upsample_nearest2d_vec_out(
-        out__: *mut *mut C_tensor,
-        out_: *mut C_tensor,
-        input_: *mut C_tensor,
-        output_size_data: *const i64,
-        output_size_len: c_int,
-        scale_factors_data: *const f64,
-        scale_factors_len: c_int,
-    );
+    // pub fn atg_upsample_nearest2d_vec_out(
+    //     out__: *mut *mut C_tensor,
+    //     out_: *mut C_tensor,
+    //     input_: *mut C_tensor,
+    //     output_size_data: *const i64,
+    //     output_size_len: c_int,
+    //     scale_factors_data: *const f64,
+    //     scale_factors_len: c_int,
+    // );
     pub fn atg_upsample_nearest3d(
         out__: *mut *mut C_tensor,
         self_: *mut C_tensor,
