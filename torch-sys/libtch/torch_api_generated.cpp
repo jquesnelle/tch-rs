@@ -18365,12 +18365,12 @@ void atg_upsample_bilinear2d_vec(tensor *out__, tensor input, int64_t *output_si
   )
 }
 
-void atg_upsample_bilinear2d_vec_out(tensor *out__, tensor out, tensor input, int64_t *output_size_data, int output_size_len, int align_corners, double *scale_factors_data, int scale_factors_len) {
-  PROTECT(
-    auto outputs__ = torch::upsample_bilinear2d_out(*out, *input, output_size_data == nullptr ? c10::nullopt : c10::optional<torch::IntArrayRef>(torch::IntArrayRef(output_size_data, output_size_len)), (bool)align_corners, at::ArrayRef<double>(scale_factors_data, scale_factors_len));
-    out__[0] = new torch::Tensor(outputs__);
-  )
-}
+// void atg_upsample_bilinear2d_vec_out(tensor *out__, tensor out, tensor input, int64_t *output_size_data, int output_size_len, int align_corners, double *scale_factors_data, int scale_factors_len) {
+//   PROTECT(
+//     auto outputs__ = torch::upsample_bilinear2d_out(*out, *input, output_size_data == nullptr ? c10::nullopt : c10::optional<torch::IntArrayRef>(torch::IntArrayRef(output_size_data, output_size_len)), (bool)align_corners, at::ArrayRef<double>(scale_factors_data, scale_factors_len));
+//     out__[0] = new torch::Tensor(outputs__);
+//   )
+// }
 
 void atg_upsample_linear1d(tensor *out__, tensor self, int64_t *output_size_data, int output_size_len, int align_corners, double scales_v, uint8_t scales_null) {
   PROTECT(
