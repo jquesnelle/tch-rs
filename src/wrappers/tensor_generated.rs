@@ -18902,15 +18902,15 @@ impl Tensor {
         self.f_upsample_bilinear2d_vec(output_size, align_corners, scale_factors).unwrap()
     }
 
-    pub fn upsample_bilinear2d_vec_out(
-        &self,
-        out: &Tensor,
-        output_size: impl IntListOption,
-        align_corners: bool,
-        scale_factors: impl DoubleList,
-    ) -> Tensor {
-        self.f_upsample_bilinear2d_vec_out(out, output_size, align_corners, scale_factors).unwrap()
-    }
+    // pub fn upsample_bilinear2d_vec_out(
+    //     &self,
+    //     out: &Tensor,
+    //     output_size: impl IntListOption,
+    //     align_corners: bool,
+    //     scale_factors: impl DoubleList,
+    // ) -> Tensor {
+    //     self.f_upsample_bilinear2d_vec_out(out, output_size, align_corners, scale_factors).unwrap()
+    // }
 
     pub fn upsample_linear1d(
         &self,

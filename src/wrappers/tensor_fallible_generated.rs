@@ -37509,26 +37509,26 @@ impl Tensor {
         Ok(Tensor { c_tensor: c_tensors[0] })
     }
 
-    pub fn f_upsample_bilinear2d_vec_out(
-        &self,
-        out: &Tensor,
-        output_size: impl IntListOption,
-        align_corners: bool,
-        scale_factors: impl DoubleList,
-    ) -> Result<Tensor, TchError> {
-        let mut c_tensors = [std::ptr::null_mut(); 1];
-        unsafe_torch_err!(atg_upsample_bilinear2d_vec_out(
-            c_tensors.as_mut_ptr(),
-            out.c_tensor,
-            self.c_tensor,
-            output_size.as_ptr(),
-            output_size.len_i32(),
-            if align_corners { 1 } else { 0 },
-            scale_factors.as_ptr(),
-            scale_factors.len_i32()
-        ));
-        Ok(Tensor { c_tensor: c_tensors[0] })
-    }
+    // pub fn f_upsample_bilinear2d_vec_out(
+    //     &self,
+    //     out: &Tensor,
+    //     output_size: impl IntListOption,
+    //     align_corners: bool,
+    //     scale_factors: impl DoubleList,
+    // ) -> Result<Tensor, TchError> {
+    //     let mut c_tensors = [std::ptr::null_mut(); 1];
+    //     unsafe_torch_err!(atg_upsample_bilinear2d_vec_out(
+    //         c_tensors.as_mut_ptr(),
+    //         out.c_tensor,
+    //         self.c_tensor,
+    //         output_size.as_ptr(),
+    //         output_size.len_i32(),
+    //         if align_corners { 1 } else { 0 },
+    //         scale_factors.as_ptr(),
+    //         scale_factors.len_i32()
+    //     ));
+    //     Ok(Tensor { c_tensor: c_tensors[0] })
+    // }
 
     pub fn f_upsample_linear1d(
         &self,
