@@ -30200,6 +30200,11 @@ impl Tensor {
         Ok(Tensor { c_tensor: c_tensors[0] })
     }
 
+    pub fn f_retain_grad(&self) -> Result<(), TchError> {
+        unsafe_torch_err!(atg_retain_grad(self.c_tensor));
+        Ok(())
+    }
+
     pub fn f_retains_grad(&self) -> Result<bool, TchError> {
         let return_;
         unsafe_torch_err!(return_ = atg_retains_grad(self.c_tensor));
