@@ -12,9 +12,9 @@ pub use wrappers::device::{Cuda, Device};
 pub use wrappers::jit::{self, CModule, IValue, TrainableCModule};
 pub use wrappers::kind::{self, Kind};
 pub use wrappers::layout::Layout;
-pub use wrappers::optimizer::COptimizer;
 #[cfg(feature = "nccl")]
-pub use wrappers::nccl::{CNCCL, CStore, ReduceOpType};
+pub use wrappers::nccl::{CStore, ReduceOpType, CNCCL};
+pub use wrappers::optimizer::COptimizer;
 #[cfg(feature = "python-extension")]
 pub use wrappers::python;
 pub use wrappers::scalar::Scalar;
