@@ -2034,6 +2034,7 @@ void atg_resize_as_sparse_out(tensor *, tensor out, tensor self, tensor the_temp
 void atg_resize_out(tensor *, tensor out, tensor self, int64_t *size_data, int size_len);
 void atg_resolve_conj(tensor *, tensor self);
 void atg_resolve_neg(tensor *, tensor self);
+void atg_retain_grad(tensor self);
 int atg_retains_grad(tensor self);
 void atg_rms_norm(tensor *, tensor input, int64_t *normalized_shape_data, int normalized_shape_len, tensor weight, double eps_v, uint8_t eps_null);
 void atg_rnn_relu(tensor *, tensor input, tensor hx, tensor *params_data, int params_len, int has_biases, int64_t num_layers, double dropout, int train, int bidirectional, int batch_first);
