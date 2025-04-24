@@ -12514,6 +12514,7 @@ extern "C" {
     );
     pub fn atg_resolve_conj(out__: *mut *mut C_tensor, self_: *mut C_tensor);
     pub fn atg_resolve_neg(out__: *mut *mut C_tensor, self_: *mut C_tensor);
+    pub fn atg_retain_grad(self_: *mut C_tensor);
     pub fn atg_retains_grad(self_: *mut C_tensor) -> c_int;
     pub fn atg_rms_norm(
         out__: *mut *mut C_tensor,
