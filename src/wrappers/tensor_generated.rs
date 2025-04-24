@@ -15511,6 +15511,10 @@ impl Tensor {
         self.f_resolve_neg().unwrap()
     }
 
+    pub fn retain_grad(&self) {
+        self.f_retain_grad().unwrap()
+    }
+
     pub fn retains_grad(&self) -> bool {
         self.f_retains_grad().unwrap()
     }
