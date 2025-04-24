@@ -14636,6 +14636,12 @@ void atg_resolve_neg(tensor *out__, tensor self) {
   )
 }
 
+void atg_retain_grad(tensor self) {
+  PROTECT(
+    self->retain_grad();
+  )
+}
+
 int atg_retains_grad(tensor self) {
   PROTECT(
     return self->retains_grad();
