@@ -1907,6 +1907,61 @@ public:
     }
 };
 
+class DifferentiableParallelExpandHeads : public torch::autograd::Function<DifferentiableParallelExpandHeads> {
+  public:
+      static torch::autograd::Variable forward(
+          torch::autograd::AutogradContext *ctx,
+          torch::autograd::Variable tensor,
+          c10d::ProcessGroupNCCL* process_group,
+          int64_t world_size,
+          int64_t rank,
+          int64_t* size,
+          size_t size_len
+          ) {
+
+          ctx->saved_data["process_group"] = reinterpret_cast<int64_t>(process_group);
+          ctx->saved_data["world_size"] = world_size;
+          ctx->saved_data["rank"] = rank;
+
+          auto t = tensor.contiguous();
+          t = t.expand(torch::IntArrayRef(size, size_len));
+
+          using namespace torch::indexing;
+          int64_t num_local_heads = size[2] / world_size;
+          int64_t start = num_local_heads * rank;
+          int64_t end = num_local_heads * (rank + 1);
+          t = t.index({Slice(), Slice(), Slice(start, end)});
+
+          return t;
+      }
+
+      static torch::autograd::variable_list backward(
+          torch::autograd::AutogradContext *ctx,
+          torch::autograd::variable_list grad_output) {
+
+          auto world_size = ctx->saved_data["world_size"].toInt();
+          auto rank = ctx->saved_data["rank"].toInt();
+
+          auto process_group = reinterpret_cast<c10d::ProcessGroupNCCL*>(
+            ctx->saved_data["process_group"].toInt());
+
+          auto grad = grad_output[0].contiguous();
+
+          std::vector<std::vector<at::Tensor>> tensor_list(1);
+          for (int i = 0; i < world_size; i++) {
+              tensor_list[0].push_back(torch::empty_like(grad));
+          }
+          tensor_list[0][rank] = grad;
+
+          c10d::AllgatherOptions opts;
+          process_group->allgather(tensor_list, grad_output, opts);
+
+          auto output = torch::concat(tensor_list[0], 2).sum(2, true);
+
+          return {output.contiguous(), torch::Tensor(), torch::Tensor(), torch::Tensor(), torch::Tensor(), torch::Tensor()};
+      }
+  };
+
 // Expose to Rust
 tensor atd_process_group_nccl_copy_to_model_parallel(nccl p, tensor t) {
     PROTECT(
@@ -1981,6 +2036,14 @@ void atd_process_group_nccl_scatter(nccl p, tensor output_tensor, tensor *input_
         opts.rootRank = root_rank;
         NCCL(p)->scatter(outputs, inputs, opts)->wait();
     )
+}
+
+tensor atd_process_group_nccl_parallel_expand_heads(nccl p, tensor t, int64_t world_size, int64_t rank, int64_t* size, size_t size_len) {
+  PROTECT(
+      c10d::ProcessGroupNCCL* pg = NCCL(p);
+      return new torch::Tensor(DifferentiableParallelExpandHeads::apply(*t, pg, world_size, rank, size, size_len));
+  )
+  return nullptr;
 }
 
 #endif
