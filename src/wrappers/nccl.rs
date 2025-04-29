@@ -78,30 +78,33 @@ impl CNCCL {
     }
 
     pub fn reduce_from_model_parallel(&self, tensor: &Tensor) -> Result<Tensor, TchError> {
-        let output = unsafe_torch_err!(torch_sys::atd_process_group_nccl_reduce_from_model_parallel(
-            self.cnccl,
-            tensor.c_tensor
-        ));
+        let output =
+            unsafe_torch_err!(torch_sys::atd_process_group_nccl_reduce_from_model_parallel(
+                self.cnccl,
+                tensor.c_tensor
+            ));
         Ok(Tensor { c_tensor: output })
     }
 
     pub fn scatter_to_model_parallel(&self, tensor: &Tensor) -> Result<Tensor, TchError> {
-        let output = unsafe_torch_err!(torch_sys::atd_process_group_nccl_scatter_to_model_parallel(
-            self.cnccl,
-            tensor.c_tensor,
-            self.size,
-            self.rank
-        ));
+        let output =
+            unsafe_torch_err!(torch_sys::atd_process_group_nccl_scatter_to_model_parallel(
+                self.cnccl,
+                tensor.c_tensor,
+                self.size,
+                self.rank
+            ));
         Ok(Tensor { c_tensor: output })
     }
 
     pub fn gather_from_model_parallel(&self, tensor: &Tensor) -> Result<Tensor, TchError> {
-        let output = unsafe_torch_err!(torch_sys::atd_process_group_nccl_gather_from_model_parallel(
-            self.cnccl,
-            tensor.c_tensor,
-            self.size,
-            self.rank
-        ));
+        let output =
+            unsafe_torch_err!(torch_sys::atd_process_group_nccl_gather_from_model_parallel(
+                self.cnccl,
+                tensor.c_tensor,
+                self.size,
+                self.rank
+            ));
         Ok(Tensor { c_tensor: output })
     }
 
@@ -168,6 +171,24 @@ impl CNCCL {
     pub fn group_end(&self) -> Result<(), TchError> {
         unsafe_torch_err!(torch_sys::atd_process_group_nccl_group_end(self.cnccl));
         Ok(())
+    }
+
+    pub fn parallel_expand_heads(
+        &self,
+        tensor: &Tensor,
+        world_size: i64,
+        rank: i64,
+        shape: impl torch_sys::IntList,
+    ) -> Result<Tensor, TchError> {
+        let output = unsafe_torch_err!(torch_sys::atd_process_group_nccl_parallel_expand_heads(
+            self.cnccl,
+            tensor.c_tensor,
+            world_size,
+            rank,
+            shape.as_ptr(),
+            shape.len_i32() as usize,
+        ));
+        Ok(Tensor { c_tensor: output })
     }
 }
 
