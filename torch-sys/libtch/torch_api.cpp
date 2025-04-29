@@ -1946,6 +1946,7 @@ class DifferentiableParallelExpandHeads : public torch::autograd::Function<Diffe
             ctx->saved_data["process_group"].toInt());
 
           auto grad = grad_output[0].contiguous();
+          std::vector<at::Tensor> source_tensors = {grad};
 
           std::vector<std::vector<at::Tensor>> tensor_list(1);
           for (int i = 0; i < world_size; i++) {
@@ -1954,7 +1955,7 @@ class DifferentiableParallelExpandHeads : public torch::autograd::Function<Diffe
           tensor_list[0][rank] = grad;
 
           c10d::AllgatherOptions opts;
-          process_group->allgather(tensor_list, grad_output, opts);
+          process_group->allgather(tensor_list, source_tensors, opts)->wait();
 
           auto output = torch::concat(tensor_list[0], 2).sum(2, true);
 
