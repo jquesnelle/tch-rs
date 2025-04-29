@@ -419,4 +419,12 @@ extern "C" {
         world_size: i64,
         rank: i64,
     ) -> *mut C_tensor;
+    pub fn atd_process_group_nccl_parallel_expand_heads(
+        p: *mut CNCCL_,
+        t: *mut C_tensor,
+        world_size: i64,
+        rank: i64,
+        shape: *const i64,
+        shape_len: size_t,
+    ) -> *mut C_tensor;
 }
