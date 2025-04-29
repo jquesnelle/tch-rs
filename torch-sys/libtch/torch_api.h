@@ -312,6 +312,7 @@ tensor atd_process_group_nccl_copy_to_model_parallel(nccl p, tensor t);
 tensor atd_process_group_nccl_reduce_from_model_parallel(nccl p, tensor t);
 tensor atd_process_group_nccl_scatter_to_model_parallel(nccl p, tensor t, int64_t world_size, int64_t rank);
 tensor atd_process_group_nccl_gather_from_model_parallel(nccl p, tensor t, int64_t world_size, int64_t rank);
+tensor atd_process_group_nccl_parallel_expand_heads(nccl p, tensor t, int64_t world_size, int64_t rank, int64_t* size, size_t size_len);
 #endif
 
 #ifdef __cplusplus
