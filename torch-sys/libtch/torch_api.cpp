@@ -2047,4 +2047,31 @@ tensor atd_process_group_nccl_parallel_expand_heads(nccl p, tensor t, int64_t wo
   return nullptr;
 }
 
+void atg__flash_attention_forward(tensor *out__, tensor query, tensor key, tensor value, tensor cum_seq_q, tensor cum_seq_k, int64_t max_q, int64_t max_k, double dropout_p, int is_causal, int return_debug_mask, double scale, int8_t scale_null, int64_t window_size_left, uint8_t window_size_left_null, int64_t window_size_right, uint8_t window_size_right_null, tensor _seqused_k, tensor _alibi_slopes) {
+  PROTECT(
+    auto outputs__ = torch::_flash_attention_forward(
+      *query,
+      *key,
+      *value,
+      (cum_seq_q ? ::std::optional<at::Tensor>(*cum_seq_q) : ::std::nullopt),
+      (cum_seq_k ? ::std::optional<at::Tensor>(*cum_seq_k) : ::std::nullopt),
+      max_q,
+      max_k,
+      dropout_p,
+      (bool)is_causal,
+      (bool)return_debug_mask,
+      (scale_null ? ::std::nullopt : std::optional<double>(scale)),
+      (window_size_left_null ? ::std::nullopt : std::optional<double>(window_size_left)),
+      (window_size_right_null ? ::std::nullopt : std::optional<double>(window_size_right)),
+      (_seqused_k ? ::std::optional<at::Tensor>(*_seqused_k) : ::std::nullopt),
+      (_alibi_slopes ? ::std::optional<at::Tensor>(*_alibi_slopes) : ::std::nullopt)
+    );
+    out__[0] = new torch::Tensor(std::get<0>(outputs__));
+    out__[1] = new torch::Tensor(std::get<1>(outputs__));
+    out__[2] = new torch::Tensor(std::get<2>(outputs__));
+    out__[3] = new torch::Tensor(std::get<3>(outputs__));
+    out__[4] = new torch::Tensor(std::get<4>(outputs__));
+  )
+}
+
 #endif
