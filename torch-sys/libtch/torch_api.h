@@ -315,6 +315,8 @@ tensor atd_process_group_nccl_gather_from_model_parallel(nccl p, tensor t, int64
 tensor atd_process_group_nccl_parallel_expand_heads(nccl p, tensor t, int64_t world_size, int64_t rank, int64_t* size, size_t size_len);
 #endif
 
+void atg__flash_attention_forward(tensor *, tensor query, tensor key, tensor value, tensor cum_seq_q, tensor cum_seq_k, int64_t max_q, int64_t max_k, double dropout_p, int is_causal, int return_debug_mask, double scale, int8_t scale_null, int64_t window_size_left, uint8_t window_size_left_null, int64_t window_size_right, uint8_t window_size_right_null, tensor _seqused_k, tensor _alibi_slopes);
+
 #ifdef __cplusplus
 };
 

@@ -340,6 +340,28 @@ extern "C" {
     );
     pub fn atm_set_tensor_expr_fuser_enabled(enabled: c_int);
     pub fn atm_get_tensor_expr_fuser_enabled() -> bool;
+
+    pub fn atg__flash_attention_forward(
+        out__: *mut *mut C_tensor,
+        query: *mut C_tensor,
+        key: *mut C_tensor,
+        value: *mut C_tensor,
+        cum_seq_q: *mut C_tensor,
+        cum_seq_k: *mut C_tensor,
+        max_q: i64,
+        max_k: i64,
+        dropout_p: f64,
+        is_causal: c_int,
+        return_debug_mask: c_int,
+        scale: f64,
+        scale_null: i8,
+        window_size_left: i64,
+        window_size_left_null: i8,
+        window_size_right: i64,
+        window_size_right_null: i8,
+        seqused_k: *mut C_tensor,
+        alibi_slopes: *mut C_tensor,
+    );
 }
 
 extern "C" {
