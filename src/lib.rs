@@ -13,7 +13,7 @@ pub use wrappers::jit::{self, CModule, IValue, TrainableCModule};
 pub use wrappers::kind::{self, Kind};
 pub use wrappers::layout::Layout;
 #[cfg(feature = "nccl")]
-pub use wrappers::nccl::{CStore, ReduceOpType, CNCCL};
+pub use wrappers::nccl::{flash_attention_forward, CStore, ReduceOpType, CNCCL};
 pub use wrappers::optimizer::COptimizer;
 #[cfg(feature = "python-extension")]
 pub use wrappers::python;
@@ -26,8 +26,8 @@ pub use wrappers::{
 
 mod tensor;
 pub use tensor::{
-    autocast, display, flash_attention_forward, index, no_grad, no_grad_guard, with_grad, IndexOp,
-    NewAxis, NoGradGuard, Reduction, Shape, Tensor, TensorIndexer,
+    autocast, display, index, no_grad, no_grad_guard, with_grad, IndexOp, NewAxis, NoGradGuard,
+    Reduction, Shape, Tensor, TensorIndexer,
 };
 
 pub mod nn;
