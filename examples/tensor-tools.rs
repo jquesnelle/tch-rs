@@ -65,7 +65,7 @@ pub fn main() -> Result<()> {
             if dst_filename.ends_with(".npz") {
                 tch::Tensor::write_npz(&tensors, dst_filename)?
             } else if dst_filename.ends_with(".safetensors") {
-                tch::Tensor::write_safetensors(&tensors, dst_filename)?
+                tch::Tensor::write_safetensors(&tensors, dst_filename, &None)?
             } else if dst_filename.ends_with(".ot") {
                 tch::Tensor::save_multi(&tensors, dst_filename)?
             } else {

@@ -11663,7 +11663,7 @@ extern "C" {
         dims_data: *const i64,
         dims_len: c_int,
     );
-    pub fn atg_pin_memory(out__: *mut *mut C_tensor, self_: *mut C_tensor, device_: c_int, device_null_: i8);
+    pub fn atg_pin_memory(out__: *mut *mut C_tensor, self_: *mut C_tensor, device_: c_int);
     pub fn atg_pinverse(out__: *mut *mut C_tensor, self_: *mut C_tensor, rcond_: f64);
     pub fn atg_pixel_shuffle(out__: *mut *mut C_tensor, self_: *mut C_tensor, upscale_factor_: i64);
     pub fn atg_pixel_shuffle_out(
@@ -12610,7 +12610,6 @@ extern "C" {
     );
     pub fn atg_resolve_conj(out__: *mut *mut C_tensor, self_: *mut C_tensor);
     pub fn atg_resolve_neg(out__: *mut *mut C_tensor, self_: *mut C_tensor);
-    pub fn atg_retain_grad(self_: *mut C_tensor);
     pub fn atg_retains_grad(self_: *mut C_tensor) -> c_int;
     pub fn atg_rms_norm(
         out__: *mut *mut C_tensor,
@@ -15398,16 +15397,16 @@ extern "C" {
         scale_factors_data: *const f64,
         scale_factors_len: c_int,
     );
-    // pub fn atg_upsample_bilinear2d_vec_out(
-    //     out__: *mut *mut C_tensor,
-    //     out_: *mut C_tensor,
-    //     input_: *mut C_tensor,
-    //     output_size_data: *const i64,
-    //     output_size_len: c_int,
-    //     align_corners_: c_int,
-    //     scale_factors_data: *const f64,
-    //     scale_factors_len: c_int,
-    // );
+    pub fn atg_upsample_bilinear2d_vec_out(
+        out__: *mut *mut C_tensor,
+        out_: *mut C_tensor,
+        input_: *mut C_tensor,
+        output_size_data: *const i64,
+        output_size_len: c_int,
+        align_corners_: c_int,
+        scale_factors_data: *const f64,
+        scale_factors_len: c_int,
+    );
     pub fn atg_upsample_linear1d(
         out__: *mut *mut C_tensor,
         self_: *mut C_tensor,
@@ -15559,15 +15558,15 @@ extern "C" {
         scale_factors_data: *const f64,
         scale_factors_len: c_int,
     );
-    // pub fn atg_upsample_nearest2d_vec_out(
-    //     out__: *mut *mut C_tensor,
-    //     out_: *mut C_tensor,
-    //     input_: *mut C_tensor,
-    //     output_size_data: *const i64,
-    //     output_size_len: c_int,
-    //     scale_factors_data: *const f64,
-    //     scale_factors_len: c_int,
-    // );
+    pub fn atg_upsample_nearest2d_vec_out(
+        out__: *mut *mut C_tensor,
+        out_: *mut C_tensor,
+        input_: *mut C_tensor,
+        output_size_data: *const i64,
+        output_size_len: c_int,
+        scale_factors_data: *const f64,
+        scale_factors_len: c_int,
+    );
     pub fn atg_upsample_nearest3d(
         out__: *mut *mut C_tensor,
         self_: *mut C_tensor,

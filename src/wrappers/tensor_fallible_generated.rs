@@ -28213,14 +28213,9 @@ impl Tensor {
         Ok(Tensor { c_tensor: c_tensors[0] })
     }
 
-    pub fn f_pin_memory(&self, device: Option<Device>) -> Result<Tensor, TchError> {
+    pub fn f_pin_memory(&self, device: Device) -> Result<Tensor, TchError> {
         let mut c_tensors = [std::ptr::null_mut(); 1];
-        unsafe_torch_err!(atg_pin_memory(
-            c_tensors.as_mut_ptr(),
-            self.c_tensor,
-            device.unwrap_or(Device::Cpu).c_int(),
-            device.is_none() as i8
-        ));
+        unsafe_torch_err!(atg_pin_memory(c_tensors.as_mut_ptr(), self.c_tensor, device.c_int()));
         Ok(Tensor { c_tensor: c_tensors[0] })
     }
 
@@ -30476,11 +30471,6 @@ impl Tensor {
         let mut c_tensors = [std::ptr::null_mut(); 1];
         unsafe_torch_err!(atg_resolve_neg(c_tensors.as_mut_ptr(), self.c_tensor));
         Ok(Tensor { c_tensor: c_tensors[0] })
-    }
-
-    pub fn f_retain_grad(&self) -> Result<(), TchError> {
-        unsafe_torch_err!(atg_retain_grad(self.c_tensor));
-        Ok(())
     }
 
     pub fn f_retains_grad(&self) -> Result<bool, TchError> {
@@ -37503,26 +37493,26 @@ impl Tensor {
         Ok(Tensor { c_tensor: c_tensors[0] })
     }
 
-    // pub fn f_upsample_bilinear2d_vec_out(
-    //     &self,
-    //     out: &Tensor,
-    //     output_size: impl IntListOption,
-    //     align_corners: bool,
-    //     scale_factors: impl DoubleList,
-    // ) -> Result<Tensor, TchError> {
-    //     let mut c_tensors = [std::ptr::null_mut(); 1];
-    //     unsafe_torch_err!(atg_upsample_bilinear2d_vec_out(
-    //         c_tensors.as_mut_ptr(),
-    //         out.c_tensor,
-    //         self.c_tensor,
-    //         output_size.as_ptr(),
-    //         output_size.len_i32(),
-    //         if align_corners { 1 } else { 0 },
-    //         scale_factors.as_ptr(),
-    //         scale_factors.len_i32()
-    //     ));
-    //     Ok(Tensor { c_tensor: c_tensors[0] })
-    // }
+    pub fn f_upsample_bilinear2d_vec_out(
+        &self,
+        out: &Tensor,
+        output_size: impl IntListOption,
+        align_corners: bool,
+        scale_factors: impl DoubleList,
+    ) -> Result<Tensor, TchError> {
+        let mut c_tensors = [std::ptr::null_mut(); 1];
+        unsafe_torch_err!(atg_upsample_bilinear2d_vec_out(
+            c_tensors.as_mut_ptr(),
+            out.c_tensor,
+            self.c_tensor,
+            output_size.as_ptr(),
+            output_size.len_i32(),
+            if align_corners { 1 } else { 0 },
+            scale_factors.as_ptr(),
+            scale_factors.len_i32()
+        ));
+        Ok(Tensor { c_tensor: c_tensors[0] })
+    }
 
     pub fn f_upsample_linear1d(
         &self,
@@ -37847,24 +37837,24 @@ impl Tensor {
         Ok(Tensor { c_tensor: c_tensors[0] })
     }
 
-    // pub fn f_upsample_nearest2d_vec_out(
-    //     &self,
-    //     out: &Tensor,
-    //     output_size: impl IntListOption,
-    //     scale_factors: impl DoubleList,
-    // ) -> Result<Tensor, TchError> {
-    //     let mut c_tensors = [std::ptr::null_mut(); 1];
-    //     unsafe_torch_err!(atg_upsample_nearest2d_vec_out(
-    //         c_tensors.as_mut_ptr(),
-    //         out.c_tensor,
-    //         self.c_tensor,
-    //         output_size.as_ptr(),
-    //         output_size.len_i32(),
-    //         scale_factors.as_ptr(),
-    //         scale_factors.len_i32()
-    //     ));
-    //     Ok(Tensor { c_tensor: c_tensors[0] })
-    // }
+    pub fn f_upsample_nearest2d_vec_out(
+        &self,
+        out: &Tensor,
+        output_size: impl IntListOption,
+        scale_factors: impl DoubleList,
+    ) -> Result<Tensor, TchError> {
+        let mut c_tensors = [std::ptr::null_mut(); 1];
+        unsafe_torch_err!(atg_upsample_nearest2d_vec_out(
+            c_tensors.as_mut_ptr(),
+            out.c_tensor,
+            self.c_tensor,
+            output_size.as_ptr(),
+            output_size.len_i32(),
+            scale_factors.as_ptr(),
+            scale_factors.len_i32()
+        ));
+        Ok(Tensor { c_tensor: c_tensors[0] })
+    }
 
     pub fn f_upsample_nearest3d(
         &self,

@@ -14598,7 +14598,7 @@ impl Tensor {
         self.f_permute_copy_out(out, dims).unwrap()
     }
 
-    pub fn pin_memory(&self, device: Option<Device>) -> Tensor {
+    pub fn pin_memory(&self, device: Device) -> Tensor {
         self.f_pin_memory(device).unwrap()
     }
 
@@ -15617,10 +15617,6 @@ impl Tensor {
 
     pub fn resolve_neg(&self) -> Tensor {
         self.f_resolve_neg().unwrap()
-    }
-
-    pub fn retain_grad(&self) {
-        self.f_retain_grad().unwrap()
     }
 
     pub fn retains_grad(&self) -> bool {
@@ -18895,15 +18891,15 @@ impl Tensor {
         self.f_upsample_bilinear2d_vec(output_size, align_corners, scale_factors).unwrap()
     }
 
-    // pub fn upsample_bilinear2d_vec_out(
-    //     &self,
-    //     out: &Tensor,
-    //     output_size: impl IntListOption,
-    //     align_corners: bool,
-    //     scale_factors: impl DoubleList,
-    // ) -> Tensor {
-    //     self.f_upsample_bilinear2d_vec_out(out, output_size, align_corners, scale_factors).unwrap()
-    // }
+    pub fn upsample_bilinear2d_vec_out(
+        &self,
+        out: &Tensor,
+        output_size: impl IntListOption,
+        align_corners: bool,
+        scale_factors: impl DoubleList,
+    ) -> Tensor {
+        self.f_upsample_bilinear2d_vec_out(out, output_size, align_corners, scale_factors).unwrap()
+    }
 
     pub fn upsample_linear1d(
         &self,
@@ -19083,14 +19079,14 @@ impl Tensor {
         self.f_upsample_nearest2d_vec(output_size, scale_factors).unwrap()
     }
 
-    // pub fn upsample_nearest2d_vec_out(
-    //     &self,
-    //     out: &Tensor,
-    //     output_size: impl IntListOption,
-    //     scale_factors: impl DoubleList,
-    // ) -> Tensor {
-    //     self.f_upsample_nearest2d_vec_out(out, output_size, scale_factors).unwrap()
-    // }
+    pub fn upsample_nearest2d_vec_out(
+        &self,
+        out: &Tensor,
+        output_size: impl IntListOption,
+        scale_factors: impl DoubleList,
+    ) -> Tensor {
+        self.f_upsample_nearest2d_vec_out(out, output_size, scale_factors).unwrap()
+    }
 
     pub fn upsample_nearest3d(
         &self,

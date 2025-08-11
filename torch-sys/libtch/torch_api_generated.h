@@ -1863,7 +1863,7 @@ void atg_pdist(tensor *, tensor self, double p);
 void atg_permute(tensor *, tensor self, int64_t *dims_data, int dims_len);
 void atg_permute_copy(tensor *, tensor self, int64_t *dims_data, int dims_len);
 void atg_permute_copy_out(tensor *, tensor out, tensor self, int64_t *dims_data, int dims_len);
-void atg_pin_memory(tensor *, tensor self, int device, uint8_t dim_null);
+void atg_pin_memory(tensor *, tensor self, int device);
 void atg_pinverse(tensor *, tensor self, double rcond);
 void atg_pixel_shuffle(tensor *, tensor self, int64_t upscale_factor);
 void atg_pixel_shuffle_out(tensor *, tensor out, tensor self, int64_t upscale_factor);
@@ -2030,7 +2030,6 @@ void atg_resize_as_sparse_out(tensor *, tensor out, tensor self, tensor the_temp
 void atg_resize_out(tensor *, tensor out, tensor self, int64_t *size_data, int size_len);
 void atg_resolve_conj(tensor *, tensor self);
 void atg_resolve_neg(tensor *, tensor self);
-void atg_retain_grad(tensor self);
 int atg_retains_grad(tensor self);
 void atg_rms_norm(tensor *, tensor input, int64_t *normalized_shape_data, int normalized_shape_len, tensor weight, double eps_v, uint8_t eps_null);
 void atg_rnn_relu(tensor *, tensor input, tensor hx, tensor *params_data, int params_len, int has_biases, int64_t num_layers, double dropout, int train, int bidirectional, int batch_first);
@@ -2557,7 +2556,7 @@ void atg_upsample_bilinear2d_backward(tensor *, tensor grad_output, int64_t *out
 void atg_upsample_bilinear2d_backward_grad_input(tensor *, tensor grad_input, tensor grad_output, int64_t *output_size_data, int output_size_len, int64_t *input_size_data, int input_size_len, int align_corners, double scales_h_v, uint8_t scales_h_null, double scales_w_v, uint8_t scales_w_null);
 void atg_upsample_bilinear2d_out(tensor *, tensor out, tensor self, int64_t *output_size_data, int output_size_len, int align_corners, double scales_h_v, uint8_t scales_h_null, double scales_w_v, uint8_t scales_w_null);
 void atg_upsample_bilinear2d_vec(tensor *, tensor input, int64_t *output_size_data, int output_size_len, int align_corners, double *scale_factors_data, int scale_factors_len);
-//void atg_upsample_bilinear2d_vec_out(tensor *, tensor out, tensor input, int64_t *output_size_data, int output_size_len, int align_corners, double *scale_factors_data, int scale_factors_len);
+void atg_upsample_bilinear2d_vec_out(tensor *, tensor out, tensor input, int64_t *output_size_data, int output_size_len, int align_corners, double *scale_factors_data, int scale_factors_len);
 void atg_upsample_linear1d(tensor *, tensor self, int64_t *output_size_data, int output_size_len, int align_corners, double scales_v, uint8_t scales_null);
 void atg_upsample_linear1d_backward(tensor *, tensor grad_output, int64_t *output_size_data, int output_size_len, int64_t *input_size_data, int input_size_len, int align_corners, double scales_v, uint8_t scales_null);
 void atg_upsample_linear1d_backward_grad_input(tensor *, tensor grad_input, tensor grad_output, int64_t *output_size_data, int output_size_len, int64_t *input_size_data, int input_size_len, int align_corners, double scales_v, uint8_t scales_null);
@@ -2573,7 +2572,7 @@ void atg_upsample_nearest2d_backward(tensor *, tensor grad_output, int64_t *outp
 void atg_upsample_nearest2d_backward_grad_input(tensor *, tensor grad_input, tensor grad_output, int64_t *output_size_data, int output_size_len, int64_t *input_size_data, int input_size_len, double scales_h_v, uint8_t scales_h_null, double scales_w_v, uint8_t scales_w_null);
 void atg_upsample_nearest2d_out(tensor *, tensor out, tensor self, int64_t *output_size_data, int output_size_len, double scales_h_v, uint8_t scales_h_null, double scales_w_v, uint8_t scales_w_null);
 void atg_upsample_nearest2d_vec(tensor *, tensor input, int64_t *output_size_data, int output_size_len, double *scale_factors_data, int scale_factors_len);
-//void atg_upsample_nearest2d_vec_out(tensor *, tensor out, tensor input, int64_t *output_size_data, int output_size_len, double *scale_factors_data, int scale_factors_len);
+void atg_upsample_nearest2d_vec_out(tensor *, tensor out, tensor input, int64_t *output_size_data, int output_size_len, double *scale_factors_data, int scale_factors_len);
 void atg_upsample_nearest3d(tensor *, tensor self, int64_t *output_size_data, int output_size_len, double scales_d_v, uint8_t scales_d_null, double scales_h_v, uint8_t scales_h_null, double scales_w_v, uint8_t scales_w_null);
 void atg_upsample_nearest3d_backward(tensor *, tensor grad_output, int64_t *output_size_data, int output_size_len, int64_t *input_size_data, int input_size_len, double scales_d_v, uint8_t scales_d_null, double scales_h_v, uint8_t scales_h_null, double scales_w_v, uint8_t scales_w_null);
 void atg_upsample_nearest3d_backward_grad_input(tensor *, tensor grad_input, tensor grad_output, int64_t *output_size_data, int output_size_len, int64_t *input_size_data, int input_size_len, double scales_d_v, uint8_t scales_d_null, double scales_h_v, uint8_t scales_h_null, double scales_w_v, uint8_t scales_w_null);

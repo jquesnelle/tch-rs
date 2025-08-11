@@ -195,15 +195,15 @@ int at_autocast_increment_nesting() {
 
 bool at_autocast_is_enabled() {
   PROTECT(
-    return at::autocast::is_enabled();
+    return at::autocast::is_autocast_enabled(at::kCUDA);
   )
   return -1;
 }
 
 bool at_autocast_set_enabled(bool b) {
   PROTECT(
-    bool is_enabled = at::autocast::is_enabled();
-    at::autocast::set_enabled(b);
+    bool is_enabled = at::autocast::is_autocast_enabled(at::kCUDA);
+    at::autocast::set_autocast_enabled(at::kCUDA, b);
     return is_enabled;
   )
   return -1;
@@ -1748,7 +1748,10 @@ void atd_process_group_nccl_allreduce(nccl p, tensor *tensors, int ntensors, uin
       inputs.push_back(*(tensors[i]));
     c10d::AllreduceOptions opts;
     opts.reduceOp = c10d::ReduceOp(c10d::ReduceOp::RedOpType(redOpType));
-    NCCL(p)->allreduce(inputs, opts)->wait();
+    auto work = NCCL(p)->allreduce(inputs, opts);
+    if (work != nullptr) {
+      work->wait();
+    }
   )
 }
 
@@ -1757,7 +1760,10 @@ void atd_process_group_nccl_barrier(nccl p, int device_id) {
     auto options = c10d::BarrierOptions();
     options.device = device_of_int(device_id);
     options.device_ids.push_back(device_id);
-    NCCL(p)->barrier(options)->wait();
+    auto work = NCCL(p)->barrier(options);
+    if (work != nullptr) {
+      work->wait();
+    }
   )
 }
 
@@ -1781,7 +1787,10 @@ public:
         std::vector<at::Tensor> inputs = {grad};
         c10d::AllreduceOptions opts;
         opts.reduceOp = c10d::ReduceOp::SUM;
-        process_group->allreduce(inputs, opts)->wait();
+        auto work = process_group->allreduce(inputs, opts);
+        if (work != nullptr) {
+          work->wait();
+        }
         return {grad, torch::Tensor()};
     }
 };
@@ -1800,7 +1809,10 @@ public:
         std::vector<at::Tensor> inputs = {t};
         c10d::AllreduceOptions opts;
         opts.reduceOp = c10d::ReduceOp::SUM;
-        process_group->allreduce(inputs, opts)->wait();
+        auto work = process_group->allreduce(inputs, opts);
+        if (work != nullptr) {
+          work->wait();
+        }
         return t;
     }
 
@@ -1856,7 +1868,10 @@ public:
         tensor_list[0][rank] = grad;
 
         c10d::AllgatherOptions opts;
-        process_group->allgather(tensor_list, input_tensors, opts)->wait();
+        auto work = process_group->allgather(tensor_list, input_tensors, opts);
+        if (work != nullptr) {
+          work->wait();
+        }
 
         return {torch::cat(tensor_list[0], -1), torch::Tensor(), torch::Tensor(), torch::Tensor()};
     }
@@ -1886,7 +1901,10 @@ public:
         tensor_list[0][rank] = t;
 
         c10d::AllgatherOptions opts;
-        process_group->allgather(tensor_list, input_tensors, opts)->wait();
+        auto work = process_group->allgather(tensor_list, input_tensors, opts);
+        if (work != nullptr) {
+          work->wait();
+        }
 
         return torch::cat(tensor_list[0], -1);
     }
@@ -1955,7 +1973,10 @@ class DifferentiableParallelExpandHeads : public torch::autograd::Function<Diffe
           tensor_list[0][rank] = grad;
 
           c10d::AllgatherOptions opts;
-          process_group->allgather(tensor_list, source_tensors, opts)->wait();
+          auto work = process_group->allgather(tensor_list, source_tensors, opts);
+          if (work != nullptr) {
+            work->wait();
+          }
 
           auto output = torch::concat(tensor_list[0], 2).sum(2, true);
 
@@ -2002,7 +2023,10 @@ void atd_process_group_nccl_send(nccl p, tensor *tensors, int ntensors, int dstR
         std::vector<at::Tensor> inputs;
         for (int i = 0; i < ntensors; ++i)
             inputs.push_back(*(tensors[i]));
-        NCCL(p)->send(inputs, dstRank, 0)->wait();
+        auto work = NCCL(p)->send(inputs, dstRank, 0);
+        if (work != nullptr) {
+          work->wait();
+        }
     )
 }
 
@@ -2011,7 +2035,10 @@ void atd_process_group_nccl_recv(nccl p, tensor *tensors, int ntensors, int srcR
         std::vector<at::Tensor> inputs;
         for (int i = 0; i < ntensors; ++i)
             inputs.push_back(*(tensors[i]));
-        NCCL(p)->recv(inputs, srcRank, 0)->wait();
+        auto work = NCCL(p)->recv(inputs, srcRank, 0);
+        if (work != nullptr) {
+          work->wait();
+        }
     )
 }
 
@@ -2023,7 +2050,10 @@ void atd_process_group_nccl_allgather(nccl p, tensor *output_tensors, int noutpu
         std::vector<at::Tensor> inputs = {*input_tensor};
         c10d::AllgatherOptions opts;
         opts.asyncOp = false;
-        NCCL(p)->allgather(outputs, inputs, opts)->wait();
+        auto work = NCCL(p)->allgather(outputs, inputs, opts);
+        if (work != nullptr) {
+          work->wait();
+        }
     )
 }
 
@@ -2035,7 +2065,10 @@ void atd_process_group_nccl_scatter(nccl p, tensor output_tensor, tensor *input_
         std::vector<at::Tensor> outputs = {*output_tensor};
         c10d::ScatterOptions opts;
         opts.rootRank = root_rank;
-        NCCL(p)->scatter(outputs, inputs, opts)->wait();
+        auto work = NCCL(p)->scatter(outputs, inputs, opts);
+        if (work != nullptr) {
+          work->wait();
+        }
     )
 }
 
