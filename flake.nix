@@ -40,7 +40,7 @@
 
           src = pkgs.fetchurl {
             url = "https://developer.download.nvidia.com/compute/nvshmem/redist/libnvshmem/linux-x86_64/libnvshmem-linux-x86_64-${version}_cuda12-archive.tar.xz";
-            hash = "sha256-dXRstC611auvROEo2SOKFiO2TNTUm8LE2O+cYI1Gx+E="; # You'll need to update this hash
+            hash = "sha256-dXRstC611auvROEo2SOKFiO2TNTUm8LE2O+cYI1Gx+E=";
           };
 
           nativeBuildInputs = with pkgs; [ autoPatchelfHook ];
