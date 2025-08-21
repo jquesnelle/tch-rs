@@ -12,8 +12,10 @@ use std::{env, fs, io};
 
 const TORCH_VERSION: &str = "2.9.0.dev20250811";
 const PYTHON_PRINT_PYTORCH_DETAILS: &str = r"
+import sys
 import torch
 from torch.utils import cpp_extension
+print(f'PYTHON_VERSION: {sys.version_info.major}.{sys.version_info.minor}')
 print('LIBTORCH_VERSION:', torch.__version__.split('+')[0])
 print('LIBTORCH_CXX11:', torch._C._GLIBCXX_USE_CXX11_ABI)
 for include_path in cpp_extension.include_paths():
@@ -55,6 +57,7 @@ enum Os {
 struct SystemInfo {
     os: Os,
     python_interpreter: PathBuf,
+    python_version: Option<String>,
     cxx11_abi: String,
     libtorch_include_dirs: Vec<PathBuf>,
     libtorch_lib_dir: PathBuf,
@@ -206,13 +209,16 @@ impl SystemInfo {
             }
         }
         let mut libtorch_lib_dir = None;
-        let cxx11_abi = if env_var_rerun("LIBTORCH_USE_PYTORCH").is_ok() {
+        let (cxx11_abi, python_version) = if env_var_rerun("LIBTORCH_USE_PYTORCH").is_ok() {
             let output = std::process::Command::new(&python_interpreter)
                 .arg("-c")
                 .arg(PYTHON_PRINT_PYTORCH_DETAILS)
                 .output()
                 .with_context(|| format!("error running {python_interpreter:?}"))?;
+            
             let mut cxx11_abi = None;
+            let mut python_version = None;
+            
             for line in String::from_utf8_lossy(&output.stdout).lines() {
                 if let Some(version) = line.strip_prefix("LIBTORCH_VERSION: ") {
                     version_check(version)?
@@ -228,11 +234,22 @@ impl SystemInfo {
                 if let Some(path) = line.strip_prefix("LIBTORCH_LIB: ") {
                     libtorch_lib_dir = Some(PathBuf::from(path))
                 }
+                if let Some(version) = line.strip_prefix("PYTHON_VERSION: ") {
+                    python_version = Some(version.to_owned());
+                }
             }
-            match cxx11_abi {
+            
+            let cxx11_abi = match cxx11_abi {
                 Some(cxx11_abi) => cxx11_abi,
                 None => anyhow::bail!("no cxx11 abi returned by python {output:?}"),
-            }
+            };
+            
+            let python_version = match python_version {
+                Some(version) => version,
+                None => anyhow::bail!("no python version returned by python {output:?}"),
+            };
+            
+            (cxx11_abi, Some(python_version))
         } else {
             let libtorch = Self::prepare_libtorch_dir(os)?;
             let includes = env_var_rerun("LIBTORCH_INCLUDE")
@@ -251,7 +268,7 @@ impl SystemInfo {
             libtorch_include_dirs.push(includes.join("include"));
             libtorch_include_dirs.push(includes.join("include/torch/csrc/api/include"));
             libtorch_lib_dir = Some(lib.join("lib"));
-            env_var_rerun("LIBTORCH_CXX11_ABI").unwrap_or_else(|_| "1".to_owned())
+            (env_var_rerun("LIBTORCH_CXX11_ABI").unwrap_or_else(|_| "1".to_owned()), None)
         };
         if let Ok(cuda_root) = env_var_rerun("CUDA_ROOT") {
             libtorch_include_dirs.push(PathBuf::from(cuda_root).join("include"))
@@ -264,6 +281,7 @@ impl SystemInfo {
         Ok(Self {
             os,
             python_interpreter,
+            python_version,
             cxx11_abi,
             libtorch_include_dirs,
             libtorch_lib_dir,
@@ -485,7 +503,8 @@ fn main() -> anyhow::Result<()> {
             system_info.link("torch_hip")
         }
         if cfg!(feature = "python-extension") {
-            system_info.link("torch_python")
+            system_info.link("torch_python");
+            system_info.link(&format!("python{}", system_info.python_version.as_ref().expect("python version is set")));
         }
         if system_info.link_type == LinkType::Static {
             // TODO: this has only be tried out on the cpu version. Check that it works
