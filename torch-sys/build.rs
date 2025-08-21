@@ -71,7 +71,11 @@ fn download<P: AsRef<Path>>(source_url: &str, target_file: P) -> anyhow::Result<
     let response = ureq::get(source_url).call()?;
     let response_code = response.status();
     if response_code != 200 {
-        anyhow::bail!("Unexpected response code {} for {}", response_code, source_url)
+        anyhow::bail!(
+            "Unexpected response code {} for {}",
+            response_code,
+            source_url
+        )
     }
     let mut reader = response.into_reader();
     std::io::copy(&mut reader, &mut writer)?;
@@ -105,7 +109,11 @@ fn get_pypi_wheel_url_for_aarch64_macosx() -> anyhow::Result<String> {
     let response = ureq::get(pypi_url.as_str()).call()?;
     let response_code = response.status();
     if response_code != 200 {
-        anyhow::bail!("Unexpected response code {} for {}", response_code, pypi_url)
+        anyhow::bail!(
+            "Unexpected response code {} for {}",
+            response_code,
+            pypi_url
+        )
     }
     let pypi_package: PyPiPackage = response.into_json()?;
     let urls = pypi_package.urls;
@@ -146,7 +154,10 @@ fn extract<P: AsRef<Path>>(filename: P, outpath: P) -> anyhow::Result<()> {
 
     // This is if we're unzipping a python wheel.
     if outpath.as_ref().join("torch").exists() {
-        fs::rename(outpath.as_ref().join("torch"), outpath.as_ref().join("libtorch"))?;
+        fs::rename(
+            outpath.as_ref().join("torch"),
+            outpath.as_ref().join("libtorch"),
+        )?;
     }
     Ok(())
 }
@@ -167,14 +178,19 @@ fn version_check(version: &str) -> Result<()> {
         Some((version, _)) => version,
     };
     if version != TORCH_VERSION {
-        anyhow::bail!("this tch version expects PyTorch {TORCH_VERSION}, got {version}, this check can be bypassed by setting the LIBTORCH_BYPASS_VERSION_CHECK environment variable")
+        anyhow::bail!(
+            "this tch version expects PyTorch {TORCH_VERSION}, got {version}, this check can be bypassed by setting the LIBTORCH_BYPASS_VERSION_CHECK environment variable"
+        )
     }
     Ok(())
 }
 
 impl SystemInfo {
     fn new() -> Result<Self> {
-        let os = match env::var("CARGO_CFG_TARGET_OS").expect("Unable to get TARGET_OS").as_str() {
+        let os = match env::var("CARGO_CFG_TARGET_OS")
+            .expect("Unable to get TARGET_OS")
+            .as_str()
+        {
             "linux" => Os::Linux,
             "windows" => Os::Windows,
             "macos" => Os::Macos,
@@ -193,7 +209,7 @@ impl SystemInfo {
                         PathBuf::from("python3")
                     }
                 }
-            }
+            },
         };
         let mut libtorch_include_dirs = vec![];
         if cfg!(feature = "python-extension") {
@@ -215,10 +231,10 @@ impl SystemInfo {
                 .arg(PYTHON_PRINT_PYTORCH_DETAILS)
                 .output()
                 .with_context(|| format!("error running {python_interpreter:?}"))?;
-            
+
             let mut cxx11_abi = None;
             let mut python_version = None;
-            
+
             for line in String::from_utf8_lossy(&output.stdout).lines() {
                 if let Some(version) = line.strip_prefix("LIBTORCH_VERSION: ") {
                     version_check(version)?
@@ -238,17 +254,17 @@ impl SystemInfo {
                     python_version = Some(version.to_owned());
                 }
             }
-            
+
             let cxx11_abi = match cxx11_abi {
                 Some(cxx11_abi) => cxx11_abi,
                 None => anyhow::bail!("no cxx11 abi returned by python {output:?}"),
             };
-            
+
             let python_version = match python_version {
                 Some(version) => version,
                 None => anyhow::bail!("no python version returned by python {output:?}"),
             };
-            
+
             (cxx11_abi, Some(python_version))
         } else {
             let libtorch = Self::prepare_libtorch_dir(os)?;
@@ -268,7 +284,10 @@ impl SystemInfo {
             libtorch_include_dirs.push(includes.join("include"));
             libtorch_include_dirs.push(includes.join("include/torch/csrc/api/include"));
             libtorch_lib_dir = Some(lib.join("lib"));
-            (env_var_rerun("LIBTORCH_CXX11_ABI").unwrap_or_else(|_| "1".to_owned()), None)
+            (
+                env_var_rerun("LIBTORCH_CXX11_ABI").unwrap_or_else(|_| "1".to_owned()),
+                None,
+            )
         };
         if let Ok(cuda_root) = env_var_rerun("CUDA_ROOT") {
             libtorch_include_dirs.push(PathBuf::from(cuda_root).join("include"))
@@ -291,7 +310,9 @@ impl SystemInfo {
 
     fn check_system_location(os: Os) -> Option<PathBuf> {
         match os {
-            Os::Linux => Path::new("/usr/lib/libtorch.so").exists().then(|| PathBuf::from("/usr")),
+            Os::Linux => Path::new("/usr/lib/libtorch.so")
+                .exists()
+                .then(|| PathBuf::from("/usr")),
             _ => None,
         }
     }
@@ -332,21 +353,25 @@ impl SystemInfo {
             if !libtorch_dir.exists() {
                 fs::create_dir(&libtorch_dir).unwrap_or_default();
                 let libtorch_url = match os {
-                Os::Linux => format!(
-                    "https://download.pytorch.org/libtorch/{}/libtorch-shared-with-deps-{}{}.zip",
-                    device, TORCH_VERSION, match device.as_ref() {
-                        "cpu" => "%2Bcpu",
-                        "cu118" => "%2Bcu118",
-                        "cu121" => "%2Bcu121",
-                        "cu124" => "%2Bcu124",
-                        "cu126" => "%2Bcu126",
-                        "cu128" => "%2Bcu128",
-                        _ => anyhow::bail!("unsupported device {device}, TORCH_CUDA_VERSION may be set incorrectly?"),
-                    }
-                ),
-                Os::Macos => {
-                    if env::var("CARGO_CFG_TARGET_ARCH") == Ok(String::from("aarch64")) {
-                        get_pypi_wheel_url_for_aarch64_macosx().expect(
+                    Os::Linux => format!(
+                        "https://download.pytorch.org/libtorch/{}/libtorch-shared-with-deps-{}{}.zip",
+                        device,
+                        TORCH_VERSION,
+                        match device.as_ref() {
+                            "cpu" => "%2Bcpu",
+                            "cu118" => "%2Bcu118",
+                            "cu121" => "%2Bcu121",
+                            "cu124" => "%2Bcu124",
+                            "cu126" => "%2Bcu126",
+                            "cu128" => "%2Bcu128",
+                            _ => anyhow::bail!(
+                                "unsupported device {device}, TORCH_CUDA_VERSION may be set incorrectly?"
+                            ),
+                        }
+                    ),
+                    Os::Macos => {
+                        if env::var("CARGO_CFG_TARGET_ARCH") == Ok(String::from("aarch64")) {
+                            get_pypi_wheel_url_for_aarch64_macosx().expect(
                             "Failed to retrieve torch from pypi.  Pre-built version of libtorch for apple silicon are not available.
                             You can install torch manually following the indications from https://github.com/LaurentMazare/tch-rs/issues/629
                             pip3 install torch=={TORCH_VERSION}
@@ -354,22 +379,27 @@ impl SystemInfo {
                             export LIBTORCH=$(python3 -c 'import torch; from pathlib import Path; print(Path(torch.__file__).parent)')
                             export DYLD_LIBRARY_PATH=${{LIBTORCH}}/lib
                             ")
-                    } else {
-                        format!("https://download.pytorch.org/libtorch/cpu/libtorch-macos-x86_64-{TORCH_VERSION}.zip")
+                        } else {
+                            format!(
+                                "https://download.pytorch.org/libtorch/cpu/libtorch-macos-x86_64-{TORCH_VERSION}.zip"
+                            )
+                        }
                     }
-                },
-                Os::Windows => format!(
-                    "https://download.pytorch.org/libtorch/{}/libtorch-win-shared-with-deps-{}{}.zip",
-                    device, TORCH_VERSION, match device.as_ref() {
-                        "cpu" => "%2Bcpu",
-                        "cu118" => "%2Bcu118",
-                        "cu121" => "%2Bcu121",
-                        "cu124" => "%2Bcu124",
-                        "cu126" => "%2Bcu126",
-                        "cu128" => "%2Bcu128",
-                        _ => ""
-                    }),
-            };
+                    Os::Windows => format!(
+                        "https://download.pytorch.org/libtorch/{}/libtorch-win-shared-with-deps-{}{}.zip",
+                        device,
+                        TORCH_VERSION,
+                        match device.as_ref() {
+                            "cpu" => "%2Bcpu",
+                            "cu118" => "%2Bcu118",
+                            "cu121" => "%2Bcu121",
+                            "cu124" => "%2Bcu124",
+                            "cu126" => "%2Bcu126",
+                            "cu128" => "%2Bcu128",
+                            _ => "",
+                        }
+                    ),
+                };
 
                 let filename = libtorch_dir.join(format!("v{TORCH_VERSION}.zip"));
                 download(&libtorch_url, &filename)?;
@@ -395,8 +425,11 @@ impl SystemInfo {
         println!("cargo:rerun-if-changed=libtch/stb_image_write.h");
         println!("cargo:rerun-if-changed=libtch/stb_image_resize.h");
         println!("cargo:rerun-if-changed=libtch/stb_image.h");
-        let mut c_files =
-            vec!["libtch/torch_api.cpp", "libtch/torch_api_generated.cpp", cuda_dependency];
+        let mut c_files = vec![
+            "libtch/torch_api.cpp",
+            "libtch/torch_api_generated.cpp",
+            cuda_dependency,
+        ];
         if cfg!(feature = "python-extension") {
             c_files.push("libtch/torch_python.cpp")
         }
@@ -408,7 +441,8 @@ impl SystemInfo {
                 // https://doc.rust-lang.org/cargo/reference/build-scripts.html#the-links-manifest-key
                 println!("cargo:libtorch_lib={}", self.libtorch_lib_dir.display());
                 let mut builder = cc::Build::new();
-                builder.cpp(true)
+                builder
+                    .cpp(true)
                     .pic(true)
                     .warnings(false)
                     .includes(&self.libtorch_include_dirs)
@@ -419,15 +453,15 @@ impl SystemInfo {
                 if cfg!(feature = "nccl") {
                     builder.flag("-DUSE_C10D_NCCL");
                 }
-                builder.files(&c_files)
-                    .compile("tch");
+                builder.files(&c_files).compile("tch");
             }
             Os::Windows => {
                 // TODO: Pass "/link" "LIBPATH:{}" to cl.exe in order to emulate rpath.
                 //       Not yet supported by cc=rs.
                 //       https://github.com/alexcrichton/cc-rs/issues/323
                 let mut builder = cc::Build::new();
-                builder.cpp(true)
+                builder
+                    .cpp(true)
                     .pic(true)
                     .warnings(false)
                     .includes(&self.libtorch_include_dirs)
@@ -436,8 +470,7 @@ impl SystemInfo {
                 if cfg!(feature = "nccl") {
                     builder.flag("/p:DefineConstants=USE_C10D_NCCL");
                 }
-                builder.files(&c_files)
-                    .compile("tch");
+                builder.files(&c_files).compile("tch");
             }
         };
     }
@@ -504,7 +537,13 @@ fn main() -> anyhow::Result<()> {
         }
         if cfg!(feature = "python-extension") {
             system_info.link("torch_python");
-            system_info.link(&format!("python{}", system_info.python_version.as_ref().expect("python version is set")));
+            system_info.link(&format!(
+                "python{}",
+                system_info
+                    .python_version
+                    .as_ref()
+                    .expect("python version is set")
+            ));
         }
         if system_info.link_type == LinkType::Static {
             // TODO: this has only be tried out on the cpu version. Check that it works
