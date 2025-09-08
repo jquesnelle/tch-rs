@@ -49,6 +49,7 @@ let excluded_functions =
     ; "nested_tensor"
     ; "arange_out"
     ; "pin_memory"
+    ; "is_pinned"
     ]
 
 let no_tensor_options =
