@@ -10706,7 +10706,7 @@ impl Tensor {
         self.f_is_nonzero().unwrap()
     }
 
-    pub fn is_pinned(&self, device: impl Into<Option<Device>>) -> bool {
+    pub fn internal_is_pinned(&self, device: impl Into<Option<Device>>) -> bool {
         self.f_is_pinned(device).unwrap()
     }
 
