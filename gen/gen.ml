@@ -48,6 +48,7 @@ let excluded_functions =
     ; "bernoulli_out"
     ; "nested_tensor"
     ; "arange_out"
+    ; "pin_memory"
     ]
 
 let no_tensor_options =
@@ -142,6 +143,7 @@ module Func = struct
     | ScalarType
     | ScalarTypeOption
     | Device
+    | DeviceOption (* Device.t option *)
     | String
     | Layout
     | LayoutOption
@@ -174,7 +176,7 @@ module Func = struct
     | "const c10::list<::std::optional<at::tensor>> &"
     | "const c10::list<c10::optional<at::tensor>> &" -> Some TensorOptList
     | "const at::itensorlistref &" | "at::tensorlist" -> Some TensorList
-    | "at::device" -> Some Device
+    | "at::device" -> Some (if is_nullable then DeviceOption else Device)
     | "const at::scalar &" | "at::scalar" -> Some Scalar
     | "at::scalartype" -> if is_nullable then Some ScalarTypeOption else Some ScalarType
     | "c10::string_view" -> Some String
@@ -193,6 +195,7 @@ module Func = struct
       | String -> Printf.sprintf "char* %s_ptr, int %s_len" arg_name arg_name
       | Int64Option -> Printf.sprintf "int64_t %s_v, uint8_t %s_null" arg_name arg_name
       | DoubleOption -> Printf.sprintf "double %s_v, uint8_t %s_null" arg_name arg_name
+      | DeviceOption -> Printf.sprintf "int %s_v, uint8_t %s_null" arg_name arg_name
       | otherwise ->
         let simple_type_cstring =
           match otherwise with
@@ -208,6 +211,7 @@ module Func = struct
           | Layout | LayoutOption -> "int8_t"
           | Int64Option
           | DoubleOption
+          | DeviceOption
           | String
           | IntList
           | IntListOption
@@ -259,6 +263,11 @@ module Func = struct
       | DoubleOption ->
         Printf.sprintf
           "%s_null ? c10::nullopt : c10::optional<double>(%s_v)"
+          arg_name
+          arg_name
+      | DeviceOption ->
+        Printf.sprintf
+          "%s_null ? c10::nullopt : c10::optional<at::Device>(device_of_int(%s_v))"
           arg_name
           arg_name
       | ScalarType -> Printf.sprintf "at::ScalarType(%s)" arg_name
@@ -332,6 +341,7 @@ module Func = struct
       | TensorList -> Printf.sprintf "%s_data: *const *mut C_tensor, %s_len: c_int" an an
       | Int64Option -> Printf.sprintf "%s_v: i64, %s_null: i8" an an
       | DoubleOption -> Printf.sprintf "%s_v: f64, %s_null: i8" an an
+      | DeviceOption -> Printf.sprintf "%s_v: c_int, %s_null: i8" an an
       | TensorOptions -> Printf.sprintf "%s_kind: c_int, %s_device: c_int" an an)
     |> String.concat ~sep:", "
 
@@ -398,6 +408,7 @@ module Func = struct
           | TensorOptions -> "(Kind, Device)"
           | Int64Option -> "impl Into<Option<i64>>"
           | DoubleOption -> "impl Into<Option<f64>>"
+          | DeviceOption -> "impl Into<Option<Device>>"
           | Scalar -> "S"
           | ScalarType -> "Kind"
           | ScalarTypeOption -> "impl Into<Option<Kind>>"
@@ -460,6 +471,7 @@ module Func = struct
       | Int64Option -> Printf.sprintf "%s.unwrap_or(0i64), %s.is_none() as i8" name name
       | DoubleOption ->
         Printf.sprintf "%s.unwrap_or(std::f64::NAN), %s.is_none() as i8" name name
+      | DeviceOption -> Printf.sprintf "%s.map_or(0, |d| d.c_int()), %s.is_none() as i8" name name
       | String -> Printf.sprintf "%s.as_ptr(), %s.len() as i32" name name
       | IntList | IntListOption | DoubleList ->
         Printf.sprintf "%s.as_ptr(), %s.len_i32()" name name
@@ -691,7 +703,7 @@ let write_fallible_wrapper funcs filename =
       pm "    )%s {" (Func.rust_return_type func ~fallible:true);
       List.iter func.args ~f:(fun arg ->
         match arg.arg_type with
-        | DoubleOption | Int64Option ->
+        | DoubleOption | Int64Option | DeviceOption ->
           let arg_name = Func.rust_name arg.arg_name in
           pm "        let %s = %s.into();" arg_name arg_name
         | _ -> ());

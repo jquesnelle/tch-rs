@@ -242,7 +242,8 @@ extern "C" {
         stride_data: *const i64,
         stride_len: c_int,
         dtype_: c_int,
-        device_: c_int,
+        device_v: c_int,
+        device_null: i8,
         layout_: i8,
     );
     pub fn atg__autocast_to_full_precision(
@@ -2197,12 +2198,18 @@ extern "C" {
         p_: f64,
         pdist_: *mut C_tensor,
     );
-    pub fn atg__pin_memory(out__: *mut *mut C_tensor, self_: *mut C_tensor, device_: c_int);
+    pub fn atg__pin_memory(
+        out__: *mut *mut C_tensor,
+        self_: *mut C_tensor,
+        device_v: c_int,
+        device_null: i8,
+    );
     pub fn atg__pin_memory_out(
         out__: *mut *mut C_tensor,
         out_: *mut C_tensor,
         self_: *mut C_tensor,
-        device_: c_int,
+        device_v: c_int,
+        device_null: i8,
     );
     pub fn atg__prelu_kernel(
         out__: *mut *mut C_tensor,
@@ -8451,7 +8458,7 @@ extern "C" {
     pub fn atg_is_leaf(self_: *mut C_tensor) -> c_int;
     pub fn atg_is_neg(self_: *mut C_tensor) -> c_int;
     pub fn atg_is_nonzero(self_: *mut C_tensor) -> c_int;
-    pub fn atg_is_pinned(self_: *mut C_tensor, device_: c_int) -> c_int;
+    pub fn atg_is_pinned(self_: *mut C_tensor, device_v: c_int, device_null: i8) -> c_int;
     pub fn atg_is_same_size(self_: *mut C_tensor, other_: *mut C_tensor) -> c_int;
     pub fn atg_is_set_to(self_: *mut C_tensor, tensor_: *mut C_tensor) -> c_int;
     pub fn atg_is_signed(self_: *mut C_tensor) -> c_int;
@@ -11663,7 +11670,6 @@ extern "C" {
         dims_data: *const i64,
         dims_len: c_int,
     );
-    pub fn atg_pin_memory(out__: *mut *mut C_tensor, self_: *mut C_tensor, device_: c_int);
     pub fn atg_pinverse(out__: *mut *mut C_tensor, self_: *mut C_tensor, rcond_: f64);
     pub fn atg_pixel_shuffle(out__: *mut *mut C_tensor, self_: *mut C_tensor, upscale_factor_: i64);
     pub fn atg_pixel_shuffle_out(
