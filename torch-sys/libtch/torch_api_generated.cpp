@@ -348,9 +348,9 @@ void atg__assert_scalar(scalar self_scalar, char* assert_msg_ptr, int assert_msg
   )
 }
 
-void atg__assert_tensor_metadata(tensor a, int64_t *size_data, int size_len, int64_t *stride_data, int stride_len, int dtype, int device, int8_t layout) {
+void atg__assert_tensor_metadata(tensor a, int64_t *size_data, int size_len, int64_t *stride_data, int stride_len, int dtype, int device_v, uint8_t device_null, int8_t layout) {
   PROTECT(
-    torch::_assert_tensor_metadata(*a, size_data == nullptr ? c10::nullopt : c10::optional<torch::IntArrayRef>(torch::IntArrayRef(size_data, size_len)), stride_data == nullptr ? c10::nullopt : c10::optional<torch::IntArrayRef>(torch::IntArrayRef(stride_data, stride_len)), dtype < 0 ? c10::nullopt : c10::optional<at::ScalarType>(at::ScalarType(dtype)), device_of_int(device), (layout == -1 ? c10::nullopt : c10::optional<at::Layout>(static_cast<at::Layout>(layout))));
+    torch::_assert_tensor_metadata(*a, size_data == nullptr ? c10::nullopt : c10::optional<torch::IntArrayRef>(torch::IntArrayRef(size_data, size_len)), stride_data == nullptr ? c10::nullopt : c10::optional<torch::IntArrayRef>(torch::IntArrayRef(stride_data, stride_len)), dtype < 0 ? c10::nullopt : c10::optional<at::ScalarType>(at::ScalarType(dtype)), device_null ? c10::nullopt : c10::optional<at::Device>(device_of_int(device_v)), (layout == -1 ? c10::nullopt : c10::optional<at::Layout>(static_cast<at::Layout>(layout))));
   )
 }
 
@@ -2211,16 +2211,16 @@ void atg__pdist_backward_out(tensor *out__, tensor out, tensor grad, tensor self
   )
 }
 
-void atg__pin_memory(tensor *out__, tensor self, int device) {
+void atg__pin_memory(tensor *out__, tensor self, int device_v, uint8_t device_null) {
   PROTECT(
-    auto outputs__ = torch::_pin_memory(*self, device_of_int(device));
+    auto outputs__ = torch::_pin_memory(*self, device_null ? c10::nullopt : c10::optional<at::Device>(device_of_int(device_v)));
     out__[0] = new torch::Tensor(outputs__);
   )
 }
 
-void atg__pin_memory_out(tensor *out__, tensor out, tensor self, int device) {
+void atg__pin_memory_out(tensor *out__, tensor out, tensor self, int device_v, uint8_t device_null) {
   PROTECT(
-    auto outputs__ = torch::_pin_memory_out(*out, *self, device_of_int(device));
+    auto outputs__ = torch::_pin_memory_out(*out, *self, device_null ? c10::nullopt : c10::optional<at::Device>(device_of_int(device_v)));
     out__[0] = new torch::Tensor(outputs__);
   )
 }
@@ -9763,9 +9763,9 @@ int atg_is_nonzero(tensor self) {
   return 0;
 }
 
-int atg_is_pinned(tensor self, int device) {
+int atg_is_pinned(tensor self, int device_v, uint8_t device_null) {
   PROTECT(
-    return self->is_pinned(device_of_int(device));
+    return self->is_pinned(device_null ? c10::nullopt : c10::optional<at::Device>(device_of_int(device_v)));
   )
   return 0;
 }
@@ -13518,13 +13518,6 @@ void atg_permute_copy(tensor *out__, tensor self, int64_t *dims_data, int dims_l
 void atg_permute_copy_out(tensor *out__, tensor out, tensor self, int64_t *dims_data, int dims_len) {
   PROTECT(
     auto outputs__ = torch::permute_copy_out(*out, *self, torch::IntArrayRef(dims_data, dims_len));
-    out__[0] = new torch::Tensor(outputs__);
-  )
-}
-
-void atg_pin_memory(tensor *out__, tensor self, int device) {
-  PROTECT(
-    auto outputs__ = self->pin_memory(device_of_int(device));
     out__[0] = new torch::Tensor(outputs__);
   )
 }

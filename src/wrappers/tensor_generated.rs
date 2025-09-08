@@ -284,7 +284,7 @@ impl Tensor {
         size: impl IntListOption,
         stride: impl IntListOption,
         dtype: impl Into<Option<Kind>>,
-        device: Device,
+        device: impl Into<Option<Device>>,
         layout: Option<Layout>,
     ) {
         Tensor::f_internal_assert_tensor_metadata(a, size, stride, dtype, device, layout).unwrap()
@@ -3304,11 +3304,15 @@ impl Tensor {
         self.f_internal_pdist_backward_out(out, grad, p, pdist).unwrap()
     }
 
-    pub fn internal_pin_memory(&self, device: Device) -> Tensor {
+    pub fn internal_pin_memory(&self, device: impl Into<Option<Device>>) -> Tensor {
         self.f_internal_pin_memory(device).unwrap()
     }
 
-    pub fn internal_pin_memory_out(&self, out: &Tensor, device: Device) -> Tensor {
+    pub fn internal_pin_memory_out(
+        &self,
+        out: &Tensor,
+        device: impl Into<Option<Device>>,
+    ) -> Tensor {
         self.f_internal_pin_memory_out(out, device).unwrap()
     }
 
@@ -10784,7 +10788,7 @@ impl Tensor {
         self.f_is_nonzero().unwrap()
     }
 
-    pub fn is_pinned(&self, device: Device) -> bool {
+    pub fn is_pinned(&self, device: impl Into<Option<Device>>) -> bool {
         self.f_is_pinned(device).unwrap()
     }
 
@@ -14678,10 +14682,6 @@ impl Tensor {
 
     pub fn permute_copy_out(&self, out: &Tensor, dims: impl IntList) -> Tensor {
         self.f_permute_copy_out(out, dims).unwrap()
-    }
-
-    pub fn pin_memory(&self, device: Device) -> Tensor {
-        self.f_pin_memory(device).unwrap()
     }
 
     pub fn pinverse(&self, rcond: f64) -> Tensor {

@@ -635,9 +635,10 @@ impl Tensor {
         size: impl IntListOption,
         stride: impl IntListOption,
         dtype: impl Into<Option<Kind>>,
-        device: Device,
+        device: impl Into<Option<Device>>,
         layout: Option<Layout>,
     ) -> Result<(), TchError> {
+        let device = device.into();
         unsafe_torch_err!(atg__assert_tensor_metadata(
             a.c_tensor,
             size.as_ptr(),
@@ -645,7 +646,8 @@ impl Tensor {
             stride.as_ptr(),
             stride.len_i32(),
             dtype.into().map_or(-1, |s| s.c_int()),
-            device.c_int(),
+            device.map_or(0, |d| d.c_int()),
+            device.is_none() as i8,
             layout.map_or(-1, |s| s.to_i8())
         ));
         Ok(())
@@ -5420,23 +5422,34 @@ impl Tensor {
         Ok(Tensor { c_tensor: c_tensors[0] })
     }
 
-    pub fn f_internal_pin_memory(&self, device: Device) -> Result<Tensor, TchError> {
+    pub fn f_internal_pin_memory(
+        &self,
+        device: impl Into<Option<Device>>,
+    ) -> Result<Tensor, TchError> {
+        let device = device.into();
         let mut c_tensors = [std::ptr::null_mut(); 1];
-        unsafe_torch_err!(atg__pin_memory(c_tensors.as_mut_ptr(), self.c_tensor, device.c_int()));
+        unsafe_torch_err!(atg__pin_memory(
+            c_tensors.as_mut_ptr(),
+            self.c_tensor,
+            device.map_or(0, |d| d.c_int()),
+            device.is_none() as i8
+        ));
         Ok(Tensor { c_tensor: c_tensors[0] })
     }
 
     pub fn f_internal_pin_memory_out(
         &self,
         out: &Tensor,
-        device: Device,
+        device: impl Into<Option<Device>>,
     ) -> Result<Tensor, TchError> {
+        let device = device.into();
         let mut c_tensors = [std::ptr::null_mut(); 1];
         unsafe_torch_err!(atg__pin_memory_out(
             c_tensors.as_mut_ptr(),
             out.c_tensor,
             self.c_tensor,
-            device.c_int()
+            device.map_or(0, |d| d.c_int()),
+            device.is_none() as i8
         ));
         Ok(Tensor { c_tensor: c_tensors[0] })
     }
@@ -20614,9 +20627,16 @@ impl Tensor {
         Ok(return_ != 0)
     }
 
-    pub fn f_is_pinned(&self, device: Device) -> Result<bool, TchError> {
+    pub fn f_is_pinned(&self, device: impl Into<Option<Device>>) -> Result<bool, TchError> {
+        let device = device.into();
         let return_;
-        unsafe_torch_err!(return_ = atg_is_pinned(self.c_tensor, device.c_int()));
+        unsafe_torch_err!(
+            return_ = atg_is_pinned(
+                self.c_tensor,
+                device.map_or(0, |d| d.c_int()),
+                device.is_none() as i8
+            )
+        );
         Ok(return_ != 0)
     }
 
@@ -28343,12 +28363,6 @@ impl Tensor {
             dims.as_ptr(),
             dims.len_i32()
         ));
-        Ok(Tensor { c_tensor: c_tensors[0] })
-    }
-
-    pub fn f_pin_memory(&self, device: Device) -> Result<Tensor, TchError> {
-        let mut c_tensors = [std::ptr::null_mut(); 1];
-        unsafe_torch_err!(atg_pin_memory(c_tensors.as_mut_ptr(), self.c_tensor, device.c_int()));
         Ok(Tensor { c_tensor: c_tensors[0] })
     }
 

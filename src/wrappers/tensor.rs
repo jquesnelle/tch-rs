@@ -761,6 +761,15 @@ impl Tensor {
             Some(s) => Ok(s),
         }
     }
+
+    /// Returns a tensor with pinned memory.
+    /// 
+    /// Pinned memory allows for faster data transfer between CPU and GPU.
+    /// The device parameter from the PyTorch API is deprecated and not exposed 
+    /// in the Rust bindings - this always calls the underlying API with None.
+    pub fn pin_memory(&self) -> Tensor {
+        self.f_internal_pin_memory(None::<Device>).unwrap()
+    }
 }
 
 impl Default for Tensor {
