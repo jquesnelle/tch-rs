@@ -10,7 +10,7 @@ use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::{env, fs, io};
 
-const TORCH_VERSION: &str = "2.9.0";
+const TORCH_VERSION: &str = "2.9.1";
 const PYTHON_PRINT_PYTORCH_DETAILS: &str = r"
 import sys
 import torch
@@ -164,7 +164,7 @@ fn version_check(version: &str) -> Result<()> {
         return Ok(());
     }
     let version = version.trim();
-    // Typical version number is 2.9.0+cpu or 2.9.0+cu129
+    // Typical version number is 2.9.1+cpu or 2.9.1+cu129
     let version = match version.split_once('+') {
         None => version,
         Some((version, _)) => version,

@@ -9,10 +9,10 @@
 
   outputs =
     {
-      self,
       nixpkgs,
       rust-overlay,
       flake-utils,
+      ...
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
@@ -34,105 +34,6 @@
           ];
         };
 
-        libnvshmem = pkgs.stdenv.mkDerivation rec {
-          pname = "libnvshmem";
-          version = "3.3.20";
-
-          src = pkgs.fetchurl {
-            url = "https://developer.download.nvidia.com/compute/nvshmem/redist/libnvshmem/linux-x86_64/libnvshmem-linux-x86_64-${version}_cuda12-archive.tar.xz";
-            hash = "sha256-dXRstC611auvROEo2SOKFiO2TNTUm8LE2O+cYI1Gx+E=";
-          };
-
-          nativeBuildInputs = with pkgs; [ autoPatchelfHook ];
-          buildInputs =
-            with pkgs;
-            [
-              stdenv.cc.cc.lib
-              libpciaccess
-              libfabric
-              ucx
-              pmix
-              mpi
-            ]
-            ++ (with cudaPackages; [
-              cuda_cudart
-              cuda_nvcc
-            ]);
-
-          installPhase = ''
-            runHook preInstall
-
-            mkdir -p $out/{lib,include,bin,share}
-
-            cp -r lib/* $out/lib/
-
-            cp -r include/* $out/include/
-
-            cp -r bin/* $out/bin/
-
-            cp -r share/* $out/share/
-
-            cp LICENSE $out/share/
-
-            runHook postInstall
-          '';
-
-          postFixup = ''
-            # Fix RPATH for binaries
-            find $out/bin -type f -executable | while read -r file; do
-              if [[ -f "$file" && ! -L "$file" ]]; then
-                patchelf --set-rpath "${pkgs.lib.makeLibraryPath buildInputs}:$out/lib" "$file" 2>/dev/null || true
-              fi
-            done
-
-            # Fix RPATH for shared libraries
-            find $out/lib -name "*.so*" | while read -r file; do
-              if [[ -f "$file" && ! -L "$file" ]]; then
-                patchelf --set-rpath "${pkgs.lib.makeLibraryPath buildInputs}:$out/lib" "$file" 2>/dev/null || true
-              fi
-            done
-          '';
-
-          meta = with pkgs.lib; {
-            description = "NVIDIA SHMEM (NVSHMEM) is a parallel programming interface based on OpenSHMEM";
-            homepage = "https://developer.nvidia.com/nvshmem";
-            license = licenses.unfree;
-            platforms = [ "x86_64-linux" ];
-            maintainers = [ ];
-          };
-        };
-
-        python = pkgs.python312.override {
-          packageOverrides = pythonSelf: pythonSuper: {
-            torch-bin =
-              let
-                pyCudaVer = builtins.replaceStrings [ "." ] [ "" ] pkgs.config.cudaVersion;
-                version = "2.9.0.dev20250827";
-                nightly = true;
-                srcs = {
-                  "x86_64-linux-312" = pkgs.fetchurl {
-                    url = "https://download.pytorch.org/whl/${
-                      if nightly then "nightly/" else ""
-                    }cu${pyCudaVer}/torch-${version}%2Bcu${pyCudaVer}-cp312-cp312-manylinux_2_28_x86_64.whl";
-                    hash = "sha256-q8cQYRFQjef0vY7gaJZLGcIAMOmcCyx9BzMMVwKujdc=";
-                  };
-                };
-                pyVerNoDot = builtins.replaceStrings [ "." ] [ "" ] pythonSelf.python.pythonVersion;
-                unsupported = throw "Unsupported system";
-              in
-              pythonSuper.torch-bin.overrideAttrs (oldAttrs: rec {
-                inherit version;
-                src = srcs."${pkgs.stdenv.system}-${pyVerNoDot}" or unsupported;
-
-                buildInputs =
-                  oldAttrs.buildInputs
-                  ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
-                    libnvshmem
-                  ];
-              });
-          };
-        };
-
         ocamlDeps = with pkgs.ocamlPackages; [
           ocaml
           base
@@ -150,12 +51,10 @@
           stdlib-shims
         ];
         defaultShell = {
-          buildInputs =
-            with pkgs;
-            [
-              rustToolchain
-            ]
-            ++ ocamlDeps;
+          buildInputs = [
+            rustToolchain
+          ]
+          ++ ocamlDeps;
 
           shellHook = ''
             export OCAMLPATH="${pkgs.lib.makeSearchPath "lib/ocaml/${pkgs.ocamlPackages.ocaml.version}/site-lib" ocamlDeps}"
@@ -167,7 +66,7 @@
           '';
         };
         pytorchShell = defaultShell // {
-          buildInputs = defaultShell.buildInputs ++ [ python.pkgs.torch-bin ];
+          buildInputs = defaultShell.buildInputs ++ [ pkgs.python3Packages.torch-bin ];
           shellHook = ''
             export LIBTORCH_USE_PYTORCH=1
           ''

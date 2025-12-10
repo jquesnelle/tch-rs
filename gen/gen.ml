@@ -49,7 +49,6 @@ let excluded_functions =
     ; "nested_tensor"
     ; "arange_out"
     ; "pin_memory"
-    ; "is_pinned"
     ]
 
 let no_tensor_options =
@@ -897,7 +896,7 @@ let run
 
 let () =
   run
-    ~yaml_filename:"third_party/pytorch/Declarations-v2.9.0.yaml"
+    ~yaml_filename:"third_party/pytorch/Declarations-v2.9.1.yaml"
     ~cpp_filename:"torch-sys/libtch/torch_api_generated"
     ~ffi_filename:"torch-sys/src/c_generated.rs"
     ~wrapper_filename:"src/wrappers/tensor_generated.rs"
