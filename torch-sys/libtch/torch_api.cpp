@@ -1022,6 +1022,20 @@ void atc_set_benchmark_cudnn(int b) {
   )
 }
 
+void atc_cuda_get_device_capability(int device_index, int *major, int *minor) {
+#if AT_CUDA_ENABLED()
+  PROTECT(
+  auto props = at::cuda::getDeviceProperties(device_index);
+  *major = props->major;
+  *minor = props->minor;
+  )
+#else
+  *major = -1;
+  *minor = -1;
+  torch_last_err = strdup("CUDA is not available in this build");
+#endif
+}
+
 bool at_context_has_openmp() {
   PROTECT (
   return at::globalContext().hasOpenMP();
