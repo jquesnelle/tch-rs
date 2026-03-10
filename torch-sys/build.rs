@@ -146,10 +146,7 @@ fn extract<P: AsRef<Path>>(filename: P, outpath: P) -> anyhow::Result<()> {
 
     // This is if we're unzipping a python wheel.
     if outpath.as_ref().join("torch").exists() {
-        fs::rename(
-            outpath.as_ref().join("torch"),
-            outpath.as_ref().join("libtorch"),
-        )?;
+        fs::rename(outpath.as_ref().join("torch"), outpath.as_ref().join("libtorch"))?;
     }
     Ok(())
 }
@@ -179,10 +176,7 @@ fn version_check(version: &str) -> Result<()> {
 
 impl SystemInfo {
     fn new() -> Result<Self> {
-        let os = match env::var("CARGO_CFG_TARGET_OS")
-            .expect("Unable to get TARGET_OS")
-            .as_str()
-        {
+        let os = match env::var("CARGO_CFG_TARGET_OS").expect("Unable to get TARGET_OS").as_str() {
             "linux" => Os::Linux,
             "windows" => Os::Windows,
             "macos" => Os::Macos,
@@ -276,10 +270,7 @@ impl SystemInfo {
             libtorch_include_dirs.push(includes.join("include"));
             libtorch_include_dirs.push(includes.join("include/torch/csrc/api/include"));
             libtorch_lib_dir = Some(lib.join("lib"));
-            (
-                env_var_rerun("LIBTORCH_CXX11_ABI").unwrap_or_else(|_| "1".to_owned()),
-                None,
-            )
+            (env_var_rerun("LIBTORCH_CXX11_ABI").unwrap_or_else(|_| "1".to_owned()), None)
         };
         if let Ok(cuda_root) = env_var_rerun("CUDA_ROOT") {
             libtorch_include_dirs.push(PathBuf::from(cuda_root).join("include"))
@@ -302,9 +293,7 @@ impl SystemInfo {
 
     fn check_system_location(os: Os) -> Option<PathBuf> {
         match os {
-            Os::Linux => Path::new("/usr/lib/libtorch.so")
-                .exists()
-                .then(|| PathBuf::from("/usr")),
+            Os::Linux => Path::new("/usr/lib/libtorch.so").exists().then(|| PathBuf::from("/usr")),
             _ => None,
         }
     }
@@ -417,11 +406,8 @@ impl SystemInfo {
         println!("cargo:rerun-if-changed=libtch/stb_image_write.h");
         println!("cargo:rerun-if-changed=libtch/stb_image_resize.h");
         println!("cargo:rerun-if-changed=libtch/stb_image.h");
-        let mut c_files = vec![
-            "libtch/torch_api.cpp",
-            "libtch/torch_api_generated.cpp",
-            cuda_dependency,
-        ];
+        let mut c_files =
+            vec!["libtch/torch_api.cpp", "libtch/torch_api_generated.cpp", cuda_dependency];
         if cfg!(feature = "python-extension") {
             c_files.push("libtch/torch_python.cpp")
         }
@@ -442,6 +428,9 @@ impl SystemInfo {
                     .flag("-std=c++17")
                     .flag(format!("-D_GLIBCXX_USE_CXX11_ABI={}", self.cxx11_abi))
                     .flag("-DGLOG_USE_GLOG_EXPORT");
+                if use_cuda {
+                    builder.define("USE_CUDA", None);
+                }
                 if cfg!(feature = "nccl") {
                     builder.flag("-DUSE_C10D_NCCL");
                 }
@@ -459,6 +448,9 @@ impl SystemInfo {
                     .includes(&self.libtorch_include_dirs)
                     .flag("/std:c++17")
                     .flag("/p:DefineConstants=GLOG_USE_GLOG_EXPORT");
+                if use_cuda {
+                    builder.define("USE_CUDA", None);
+                }
                 if cfg!(feature = "nccl") {
                     builder.flag("/p:DefineConstants=USE_C10D_NCCL");
                 }
@@ -531,10 +523,7 @@ fn main() -> anyhow::Result<()> {
             system_info.link("torch_python");
             system_info.link(&format!(
                 "python{}",
-                system_info
-                    .python_version
-                    .as_ref()
-                    .expect("python version is set")
+                system_info.python_version.as_ref().expect("python version is set")
             ));
         }
         if system_info.link_type == LinkType::Static {

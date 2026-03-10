@@ -7,6 +7,9 @@
 #include<torch/csrc/jit/runtime/graph_executor.h>
 #include<torch/torch.h>
 #include<ATen/autocast_mode.h>
+#ifdef USE_CUDA
+#include<ATen/cuda/CUDAContext.h>
+#endif
 #include<torch/script.h>
 #include<torch/csrc/jit/passes/tensorexpr_fuser.h>
 #include<torch/csrc/jit/codegen/cuda/interface.h>
@@ -1020,6 +1023,20 @@ void atc_set_benchmark_cudnn(int b) {
   PROTECT(
   at::globalContext().setBenchmarkCuDNN(b);
   )
+}
+
+void atc_cuda_get_device_capability(int device_index, int *major, int *minor) {
+#if defined(USE_CUDA)
+  PROTECT(
+  auto props = at::cuda::getDeviceProperties(device_index);
+  *major = props->major;
+  *minor = props->minor;
+  )
+#else
+  *major = -1;
+  *minor = -1;
+  torch_last_err = strdup("CUDA is not available in this build");
+#endif
 }
 
 bool at_context_has_openmp() {
