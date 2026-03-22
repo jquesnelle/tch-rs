@@ -322,7 +322,11 @@ impl Optimizer {
     /// Returns all the trainable variables and their sharding for this optimizer.
     pub fn trainable_variables_with_sharding(&self) -> Vec<(Tensor, Option<Shard>)> {
         let variables = self.variables.lock().unwrap();
-        variables.trainable_variables.iter().map(|v| (v.0.tensor.shallow_clone(), v.1.clone())).collect()
+        variables
+            .trainable_variables
+            .iter()
+            .map(|v| (v.0.tensor.shallow_clone(), v.1.clone()))
+            .collect()
     }
 
     /// Sets the optimizer weight decay.

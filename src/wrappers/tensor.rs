@@ -763,14 +763,14 @@ impl Tensor {
     }
 
     /// Returns a tensor with pinned memory.
-    /// 
+    ///
     /// Pinned memory allows for faster data transfer between CPU and GPU.
     pub fn pin_memory(&self) -> Tensor {
         self.f_internal_pin_memory(None::<Device>).unwrap()
     }
 
     /// Returns true if this tensor resides in pinned memory.
-    /// 
+    ///
     /// Pinned memory allows for faster data transfer between CPU and GPU.
     pub fn is_pinned(&self) -> bool {
         self.f_is_pinned(None::<Device>).unwrap()

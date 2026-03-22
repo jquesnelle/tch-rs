@@ -13,7 +13,12 @@ pub struct LinearConfig {
 
 impl Default for LinearConfig {
     fn default() -> Self {
-        LinearConfig { ws_init: super::init::DEFAULT_KAIMING_UNIFORM, bs_init: None, bias: true, shard: None }
+        LinearConfig {
+            ws_init: super::init::DEFAULT_KAIMING_UNIFORM,
+            bs_init: None,
+            bias: true,
+            shard: None,
+        }
     }
 }
 

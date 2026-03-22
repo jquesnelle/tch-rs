@@ -197,6 +197,9 @@ void atc_manual_seed_all(uint64_t seed);
 /// Waits for all kernels in all streams on a CUDA device to complete.
 void atc_synchronize(int64_t device_index);
 
+/// Retrieves the compute capability of a CUDA device.
+void atc_cuda_get_device_capability(int device_index, int *major, int *minor);
+
 
 int atc_user_enabled_cudnn();
 void atc_set_user_enabled_cudnn(int b);

@@ -42,7 +42,7 @@ pub enum Kind {
     UInt4,
     UInt5,
     UInt6,
-    UInt7
+    UInt7,
 }
 
 impl Kind {

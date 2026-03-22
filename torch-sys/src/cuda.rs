@@ -27,4 +27,11 @@ extern "C" {
 
     /// Sets CUDNN benchmark mode.
     pub fn atc_set_benchmark_cudnn(b: c_int);
+
+    /// Retrieves the compute capability of a CUDA device.
+    pub fn atc_cuda_get_device_capability(
+        device_index: c_int,
+        major: *mut c_int,
+        minor: *mut c_int,
+    );
 }

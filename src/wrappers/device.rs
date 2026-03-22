@@ -80,6 +80,18 @@ impl Cuda {
     pub fn cudnn_set_benchmark(b: bool) {
         unsafe_torch!(torch_sys::cuda::atc_set_benchmark_cudnn(i32::from(b)))
     }
+
+    /// Returns the compute capability of a CUDA device as a `(major, minor)` pair.
+    pub fn get_device_capability(device_index: usize) -> Result<(i32, i32), crate::TchError> {
+        let mut major: libc::c_int = 0;
+        let mut minor: libc::c_int = 0;
+        unsafe_torch_err!(torch_sys::cuda::atc_cuda_get_device_capability(
+            device_index as libc::c_int,
+            &mut major,
+            &mut minor,
+        ));
+        Ok((major as i32, minor as i32))
+    }
 }
 
 impl Device {

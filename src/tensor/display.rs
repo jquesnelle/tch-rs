@@ -57,7 +57,11 @@ impl BasicKind {
     fn _is_floating_point(&self) -> bool {
         match self {
             BasicKind::Float => true,
-            BasicKind::Bool | BasicKind::Int | BasicKind::Complex | BasicKind::Bits | BasicKind::Packed => false,
+            BasicKind::Bool
+            | BasicKind::Int
+            | BasicKind::Complex
+            | BasicKind::Bits
+            | BasicKind::Packed => false,
         }
     }
 }
@@ -459,9 +463,9 @@ impl std::fmt::Display for Tensor {
                     tf.fmt_tensor(self, 1, max_w, summarize, &po, f)?;
                     writeln!(f)?;
                 }
-                BasicKind::Complex => {},
-                BasicKind::Bits => {},
-                BasicKind::Packed => {},
+                BasicKind::Complex => {}
+                BasicKind::Bits => {}
+                BasicKind::Packed => {}
             };
             let kind = match self.f_kind() {
                 Ok(kind) => format!("{kind:?}"),
